@@ -1,6 +1,6 @@
 use micro_sp::*;
 
-use r2r::ur_controller_msgs::action::URControl;
+// use r2r::ur_controller_msgs::action::URControl;
 use std::sync::{Arc, Mutex};
 
 pub fn extract_goal_from_state(state: &State) -> Predicate {
@@ -96,14 +96,16 @@ async fn tick_the_runner(
     model: &Model,
     shared_state: &Arc<Mutex<State>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let state = shared_state.lock().unwrap().clone();
+    let mut state = shared_state.lock().unwrap().clone();
 
     // Here you can execute the free transitions by checking if they are enabled and then do take_running on them
-    for t in &model.transitions {
+    model.transitions.iter().for_each(|t| {
         if t.clone().eval_running(&state) {
-            let state = t.clone().take_running(&state);
+            state = t.clone().take_running(&state);
+        } else {
+            state = state.clone()
         }
-    }
+    });
 
     // TODO: allow unknown in domain of all variables
     let the_plan = state.get_value("runner_plan");
@@ -112,16 +114,17 @@ async fn tick_the_runner(
             true => {
                 update_shared_state(
                     vec![
-                        ("runner_plan_status", "no_plan_in_state".to_spvalue()),
-                        ("runner_plan", Vec::<String>::new().to_spvalue()),
-                        ("runner_plan_current_step", (-1).to_spvalue()),
+                        ("runner_plan_status", SPValue::Unknown),
+                        ("runner_plan", SPValue::Unknown),
+                        ("runner_plan_current_step", SPValue::Unknown),
                     ],
                     shared_state,
                 )
                 .await;
             }
+            // we have not started executing the plan so we start at position 0 in the plan
             false => match state.get_value("runner_plan_current_step") {
-                SPValue::Int32(-1) => {
+                SPValue::Unknown => {
                     update_shared_state(
                         vec![("runner_plan_current_step", 0.to_spvalue())],
                         shared_state,
@@ -137,13 +140,14 @@ async fn tick_the_runner(
                         update_shared_state(
                             vec![
                                 ("runner_plan_status", "done".to_spvalue()),
-                                ("runner_plan", Vec::<String>::new().to_spvalue()),
-                                ("runner_plan_current_step", (-1).to_spvalue()),
+                                ("runner_plan", SPValue::Unknown),
+                                ("runner_plan_current_step", SPValue::Unknown),
                             ],
                             shared_state,
                         )
                         .await;
-
+                    }
+                    false => {
                         let current_op_name = match plan[current_step_in_plan as usize].clone() {
                             SPValue::String(op_name) => op_name.to_string(),
                             _ => panic!("no such op name"),
@@ -197,7 +201,6 @@ async fn tick_the_runner(
                         *shared_state.lock().unwrap() = next_state.clone();
                         // next_state // if I need to publish the state
                     }
-                    false => (),
                 },
                 _ => (),
             },

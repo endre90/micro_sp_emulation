@@ -1,7 +1,5 @@
 use futures::{Stream, StreamExt};
 use micro_sp::SPValue;
-use r2r::Node;
-use r2r::builtin_interfaces::msg::Duration;
 use r2r::micro_sp_emulation_msgs::msg::DummyIncoming;
 use r2r::micro_sp_emulation_msgs::msg::DummyOutgoing;
 // use r2r::scene_manipulation_msgs::msg::TFExtra;
@@ -9,14 +7,8 @@ use r2r::micro_sp_emulation_msgs::msg::DummyOutgoing;
 // use r2r::visualization_msgs::msg::{Marker, MarkerArray};
 use micro_sp::*;
 use r2r::QosProfile;
-use std::collections::HashMap;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
-// use r2r::geometry_msgs::msg::{Point, Pose, Quaternion, Transform};
-// use r2r::std_msgs::msg::{ColorRGBA, Header};
-// use r2r::{builtin_interfaces::msg::Time, geometry_msgs::msg::Vector3};
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
 pub static NODE_ID: &'static str = "stateful_dummy_pub_sub";
 // pub static BUFFER_MAINTAIN_RATE: u64 = 100;

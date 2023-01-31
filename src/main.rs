@@ -1,30 +1,17 @@
-use futures::stream::Stream;
-use futures::StreamExt;
-
-// use micro_sp_ros_example_1::make_initial_state;
-// use micro_sp_ros_example_1::model;
-// use micro_sp_ros_example_1::ticker;
-use r2r::ur_controller_msgs::action::URControl;
-use r2r::ActionServerGoal;
-use r2r::ParameterValue;
-use std::collections::HashMap;
+use r2r::QosProfile;
+use r2r::micro_sp_emulation_msgs::msg::DummyIncoming;
+use r2r::micro_sp_emulation_msgs::msg::DummyOutgoing;
 use std::sync::{Arc, Mutex};
-use micro_sp::*;
 
 pub static NODE_ID: &'static str = "micro_sp_runner";
 pub static TICKER_RATE: u64 = 100;
+pub static PUBLISHER_RATE: u64 = 100;
 
 mod runner;
 use runner::dummy_pub_sub_model::*;
+use runner::dummy_pub_sub_ticker::*;
 use runner::ticker::*;
 
-use crate::runner::dummy_pub_sub_model;
-// use runner::ur_robot::*;
-
-// mod core;
-// mod emulators;
-// use emulators::dummy_pub_sub::*;
-// use crate::core::resource::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -36,6 +23,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ticker_timer =
     node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
+
+    let subscriber = node.subscribe::<DummyIncoming>(
+        "dummy_incoming",
+        QosProfile::best_effort(QosProfile::default()),
+    )?;
+
+    let publisher_timer =
+        node.create_wall_timer(std::time::Duration::from_millis(PUBLISHER_RATE))?;
+    let publisher =
+        node.create_publisher::<DummyOutgoing>("dummy_outgoing", QosProfile::default())?;
 
     let handle = std::thread::spawn(move || loop {
         node.spin_once(std::time::Duration::from_millis(100));
@@ -65,6 +62,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "Simple Controller Service call failed with: {}.",
                 e
             ),
+        };
+    });
+
+    
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        match dummy_pub_sub_subscriber_callback(&shared_state_clone, subscriber, NODE_ID).await {
+            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
+        };
+    });
+
+    
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        let result =
+            dummy_pub_sub_publisher_callback(&shared_state_clone, publisher, publisher_timer, NODE_ID).await;
+        match result {
+            Ok(()) => r2r::log_info!(NODE_ID, "Publisher succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Publisher failed with: {}.", e),
         };
     });
 

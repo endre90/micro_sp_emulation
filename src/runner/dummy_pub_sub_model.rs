@@ -1,19 +1,5 @@
 use micro_sp::*;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
-
-pub fn make_initial_state() -> State {
-    let state = State::new();
-    let state = state.add(SPAssignment::new(
-        v_command!("ref_pos", vec!("a", "b", "c")),
-        SPValue::Unknown,
-    ));
-    let state = state.add(SPAssignment::new(
-        v_measured!("act_pos", vec!("a", "b", "c")),
-        SPValue::Unknown,
-    ));
-    state
-}
 
 pub fn the_model() -> Model {
 
@@ -21,7 +7,8 @@ pub fn the_model() -> Model {
     let act_pos = v_command!("act_pos", vec!("a", "b", "c"));
     let ref_pos = v_measured!("ref_pos", vec!("a", "b", "c"));
 
-    // Define a state (usually, unknown is a safe value for variables)
+    // Make a state and assign some values to variables
+    // (usually, unknown is a safe initial value for variables)
     let state = State::new();
     let state = state.add(SPAssignment::new(
         act_pos.clone(),
@@ -32,15 +19,45 @@ pub fn the_model() -> Model {
         SPValue::Unknown,
     ));
 
+    // And some mandatory variables (actually, these should be 
+    // included with the Model::new function...)
+        let state = state.add(SPAssignment::new(
+        v_runner!("runner_goal"),
+        "var:act_pos == c".to_spvalue(),
+    ));
+    let state = state.add(SPAssignment::new(
+        av_runner!("runner_plan"),
+        SPValue::Unknown,
+    ));
+    let state = state.add(SPAssignment::new(
+        v_runner!("runner_plan_status"),
+        SPValue::Unknown,
+    ));
+    let state = state.add(SPAssignment::new(
+        iv_runner!("runner_plan_current_step"),
+        SPValue::Unknown,
+    ));
+    let state = state.add(SPAssignment::new(
+        bv_runner!("runner_replan"),
+        true.to_spvalue(),
+    ));
+    let state = state.add(SPAssignment::new(
+        bv_runner!("runner_replanned"),
+        false.to_spvalue(),
+    ));  
+
     // Define automatic transitions (these transitions will immediatelly 
     // be executed if evaluated to be true)
     let autos: Vec<Transition> = vec!();
 
     // Define the message types
-    #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-    struct DummyOutgoing {
-        ref_pos: String
-    }
+    let dummy_ougoing_msg = json!({
+        "ref_pos": "String"
+    });
+
+    let dummy_incoming_msg = json!({
+        "act_pos": "String"
+    });
 
     // Define the reources
     let dummy_resource = Resource {
@@ -50,9 +67,7 @@ pub fn the_model() -> Model {
                 name: "DummyOutgoing".to_string(),
                 topic: "dummy_outgoing".to_string(),
                 category: MessageCategory::OutGoing,
-                message_type: json!({
-                    "ref_pos": "String"
-                }).to_string(),
+                message_type: dummy_ougoing_msg.to_string(),
                 variables: vec!(
                     ref_pos
                 ),
@@ -63,9 +78,7 @@ pub fn the_model() -> Model {
                 name: "DummyIncoming".to_string(),
                 topic: "dummy_incoming".to_string(),
                 category: MessageCategory::Incoming,
-                message_type: json!({
-                    "act_pos": "String"
-                }).to_string(),
+                message_type: dummy_incoming_msg.to_string(),
                 variables: vec!(
                     act_pos
                 ),
@@ -75,7 +88,7 @@ pub fn the_model() -> Model {
         )
     };
 
-
+    // Define the operations
     let op_move_to_a = Operation::new(
         "op_move_to_a",
         t!(
