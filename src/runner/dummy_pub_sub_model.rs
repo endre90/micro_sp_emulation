@@ -4,8 +4,8 @@ use serde_json::json;
 pub fn the_model() -> Model {
 
     // Define the variables
-    let act_pos = v_command!("act_pos", vec!("a", "b", "c"));
-    let ref_pos = v_measured!("ref_pos", vec!("a", "b", "c"));
+    let act_pos = v_measured!("act_pos", vec!("a", "b", "c"));
+    let ref_pos = v_command!("ref_pos", vec!("a", "b", "c"));
 
     // Make a state and assign some values to variables
     // (usually, unknown is a safe initial value for variables)
@@ -101,8 +101,8 @@ pub fn the_model() -> Model {
         ),
         t!(
             "complete_move_to_a",
-            "var:ref_pos == a && var:act_pos != a",
-            "true",
+            "var:ref_pos == a", // && var:act_pos != a",
+            "var:act_pos == a",
             vec!("var:act_pos <- a"),
             Vec::<&str>::new(),
             &state
@@ -121,8 +121,8 @@ pub fn the_model() -> Model {
         ),
         t!(
             "complete_move_to_b",
-            "var:ref_pos == b && var:act_pos == a",
-            "true",
+            "var:ref_pos == b", // && var:act_pos == a",
+            "var:act_pos == b",
             vec!("var:act_pos <- b"),
             Vec::<&str>::new(),
             &state
@@ -141,8 +141,8 @@ pub fn the_model() -> Model {
         ),
         t!(
             "complete_move_to_c",
-            "var:ref_pos == c && var:act_pos == b",
-            "true",
+            "var:ref_pos == c", // && var:act_pos == b",
+            "var:act_pos == c",
             vec!("var:act_pos <- c"),
             Vec::<&str>::new(),
             &state

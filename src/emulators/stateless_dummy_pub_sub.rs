@@ -215,7 +215,7 @@ pub async fn update_state(
         model.operations.iter().for_each(|op| {
             emulator_state_local = match op.postcondition.clone().eval_running(&emulator_state_local) {
                 false => emulator_state_local.clone(),
-                true => op.postcondition.clone().take_running(&emulator_state_local)
+                true => take_emulated(&op.postcondition.clone(), &emulator_state_local)
             };
         });
         println!("{}", emulator_state_local);
@@ -223,4 +223,16 @@ pub async fn update_state(
 
         timer.tick().await?;
     }
+}
+
+
+pub fn take_emulated(t: &Transition, state: &State) -> State {
+    let mut new_state = state.clone();
+    for a in &t.actions {
+        new_state = a.clone().assign(&new_state)
+    }
+    for a in &t.runner_actions {
+        new_state = a.clone().assign(&new_state)
+    }
+    new_state
 }
