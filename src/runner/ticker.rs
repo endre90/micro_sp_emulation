@@ -17,21 +17,74 @@ pub fn extract_goal_from_state(state: &State) -> Predicate {
     }
 }
 
+// ugh fix this, make it recursive...
 pub async fn update_shared_state(
     // var: &str,
     // val: SPValue,
-    updates: Vec<(&str, SPValue)>,
+    // updates: Vec<(&str, SPValue)>,
+    update: (&str, SPValue),
     shared_state: &Arc<Mutex<State>>,
 ) -> State {
     let shared_state_local = shared_state.lock().unwrap().clone();
-    let mut updated_state = State::new();
-    updates
-        .iter()
-        .for_each(|(var, val)| updated_state = shared_state_local.update(var, val.to_owned()));
+    // let mut updated_state = State::new();
+    let updated_state = shared_state_local.update(update.0, update.1.to_owned());
+    // updates
+    //     .iter()
+    //     .for_each(|(var, val)| updated_state = shared_state_local.update(var, val.to_owned()));
     // let updated_state = shared_state_local.update(var, val);
     *shared_state.lock().unwrap() = updated_state.clone();
     updated_state
 }
+
+// pub async fn new_ticker(
+//     node_id: &str,
+//     // ur_action_client: &r2r::ActionClient<URControl::Action>,
+//     model: &Model,
+//     shared_state: &Arc<Mutex<State>>,
+//     mut timer: r2r::Timer,
+// ) -> Result<(), Box<dyn std::error::Error>> {
+//     loop {
+//         let shared_state_local = shared_state.lock().unwrap().clone();
+//         let replan = shared_state_local.get_value("runner_replan");
+//         let replanned = shared_state_local.get_value("runner_replanned");
+
+//         println!("STATE: {}", shared_state_local);
+
+//         match (replan, replanned) {
+//             (SPValue::Bool(replan_val), SPValue::Bool(replanned_val)) => match replan_val {
+//                 true => match replanned_val {
+//                     true => {
+//                         update_shared_state(
+//                         vec![
+//                             ("runner_replan", false.to_spvalue()),
+//                             ("runner_replanned", false.to_spvalue()),
+//                         ],
+//                         shared_state,
+//                     )
+//                     .await;
+//                 },
+//                     false => {}
+//                 }
+//                 false => match replanned_val {
+//                     true => {
+//                         update_shared_state(
+//                         vec![
+//                             ("runner_replanned", false.to_spvalue()),
+//                         ],
+//                         shared_state,
+//                     )
+//                     .await;},
+//                     false => shared_state_local
+//                 }
+//             },
+//             (_, _) => shared_state_local,
+//         }
+
+//         tick_the_runner(node_id, &model, &shared_state).await?;
+
+//         timer.tick().await?;
+//     }
+// }
 
 pub async fn ticker(
     node_id: &str,
@@ -41,19 +94,21 @@ pub async fn ticker(
     mut timer: r2r::Timer,
 ) -> Result<(), Box<dyn std::error::Error>> {
     loop {
+
         let shared_state_local = shared_state.lock().unwrap().clone();
         let replan = shared_state_local.get_value("runner_replan");
         let replanned = shared_state_local.get_value("runner_replanned");
 
         println!("STATE: {}", shared_state_local);
+        
 
         match (replan, replanned) {
+            (SPValue::Bool(true), SPValue::Bool(true)) => {
+                update_shared_state(("runner_replan", false.to_spvalue()), shared_state).await;
+                update_shared_state(("runner_replanned", false.to_spvalue()), shared_state).await
+            }
             (SPValue::Bool(true), SPValue::Bool(false)) => {
-                let new_state = update_shared_state(
-                    vec![("runner_replanned", true.to_spvalue())],
-                    shared_state,
-                )
-                .await;
+                let new_state = update_shared_state(("runner_replanned", true.to_spvalue()), shared_state).await;
                 let goal = extract_goal_from_state(&new_state);
                 let new_plan =
                     bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 30);
@@ -70,7 +125,7 @@ pub async fn ticker(
                         false => {
                             r2r::log_info!(node_id, "A new plan was found: {:?}.", new_plan.plan);
                             update_shared_state(
-                                vec![("runner_plan", new_plan.plan.to_spvalue())],
+                                ("runner_plan", new_plan.plan.to_spvalue()),
                                 shared_state,
                             )
                             .await
@@ -79,7 +134,7 @@ pub async fn ticker(
                 }
             }
             (SPValue::Bool(false), _) => {
-                update_shared_state(vec![("runner_replanned", false.to_spvalue())], shared_state)
+                update_shared_state(("runner_replanned", false.to_spvalue()), shared_state)
                     .await
             }
             (_, _) => shared_state_local,
@@ -112,21 +167,15 @@ async fn tick_the_runner(
     match the_plan {
         SPValue::Array(_, plan) => match plan.is_empty() {
             true => {
-                update_shared_state(
-                    vec![
-                        ("runner_plan_status", SPValue::Unknown),
-                        ("runner_plan", SPValue::Unknown),
-                        ("runner_plan_current_step", SPValue::Unknown),
-                    ],
-                    shared_state,
-                )
-                .await;
+                update_shared_state(("runner_plan_status", SPValue::Unknown), shared_state).await;
+                update_shared_state(("runner_plan", SPValue::Unknown), shared_state).await;
+                update_shared_state(("runner_plan_current_step", SPValue::Unknown), shared_state).await;
             }
             // we have not started executing the plan so we start at position 0 in the plan
             false => match state.get_value("runner_plan_current_step") {
                 SPValue::Unknown => {
                     update_shared_state(
-                        vec![("runner_plan_current_step", 0.to_spvalue())],
+                        ("runner_plan_current_step", 0.to_spvalue()),
                         shared_state,
                     )
                     .await;
@@ -137,15 +186,9 @@ async fn tick_the_runner(
                     true => {
                         // we are done with the plan and will stop executing and we also
                         // reset the current plan so we do not tries to run the same plan again
-                        update_shared_state(
-                            vec![
-                                ("runner_plan_status", "done".to_spvalue()),
-                                ("runner_plan", SPValue::Unknown),
-                                ("runner_plan_current_step", SPValue::Unknown),
-                            ],
-                            shared_state,
-                        )
-                        .await;
+                        update_shared_state(("runner_plan_status", "done".to_spvalue()), shared_state).await;
+                        update_shared_state(("runner_plan", SPValue::Unknown), shared_state).await;
+                        update_shared_state(("runner_plan_current_step", SPValue::Unknown), shared_state).await;
                     }
                     false => {
                         let current_op_name = match plan[current_step_in_plan as usize].clone() {
@@ -166,7 +209,9 @@ async fn tick_the_runner(
                             {
                                 // The operation can be started
                                 current_op.clone().start_running(&state)
-                            } else if current_op_state == "initial".to_spvalue() {
+                            } else if current_op_state == "initial".to_spvalue()
+                                && !current_op.clone().eval_running(&state)
+                            {
                                 // The operation should be started but is not enabled
                                 state.update(
                                     "runner_plan_status",
@@ -182,7 +227,7 @@ async fn tick_the_runner(
                                 );
                                 next_state.update(
                                     "runner_plan_status",
-                                    format!("Completing step {current_step_in_plan}.").to_spvalue(),
+                                    format!("Completed step {current_step_in_plan}.").to_spvalue(),
                                 )
                             } else if current_op_state == "executing".to_spvalue() {
                                 state.update(
@@ -205,6 +250,7 @@ async fn tick_the_runner(
                 _ => (),
             },
         },
+        SPValue::Unknown => (),
         _ => panic!("runner_plan should be Array type."),
     }
 

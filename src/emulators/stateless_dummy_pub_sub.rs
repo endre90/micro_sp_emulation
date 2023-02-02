@@ -44,7 +44,7 @@ pub fn the_model() -> Model {
         ),
         t!(
             "complete_move_to_a",
-                "var:ref_pos == a",
+            "var:ref_pos == a",
             "true",
             vec!("var:act_pos <- a"),
             Vec::<&str>::new(),
@@ -213,7 +213,7 @@ pub async fn update_state(
     loop {
         let mut emulator_state_local = emulator_state.lock().unwrap().clone();
         model.operations.iter().for_each(|op| {
-            emulator_state_local = match op.postcondition.clone().eval_running(&emulator_state_local) {
+            emulator_state_local = match op.postcondition.clone().eval_planning(&emulator_state_local) {
                 false => emulator_state_local.clone(),
                 true => take_emulated(&op.postcondition.clone(), &emulator_state_local)
             };
