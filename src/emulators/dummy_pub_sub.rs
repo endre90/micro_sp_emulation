@@ -8,7 +8,7 @@ use r2r::QosProfile;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
-pub static NODE_ID: &'static str = "stateless_dummy_pub_sub";
+pub static NODE_ID: &'static str = "dummy_pub_sub";
 // pub static BUFFER_MAINTAIN_RATE: u64 = 100;
 pub static PUBLISHER_RATE: u64 = 100;
 pub static STATE_UPDATE_RATE: u64 = 1000;
@@ -32,63 +32,124 @@ pub fn make_initial_state() -> State {
 // copy over the model here (now the stateless should only look at the command vars)
 pub fn the_model() -> Model {
     let state = make_initial_state();
-    let op_move_to_a = Operation::new(
-        "op_move_to_a",
-        t!(
-            "start_move_to_a",
-            "var:ref_pos != a",
-            "true",
-            vec!("var:ref_pos <- a"),
-            Vec::<&str>::new(),
-            &state
-        ),
-        t!(
-            "complete_move_to_a",
-            "var:ref_pos == a",
-            "true",
-            vec!("var:act_pos <- a"),
-            Vec::<&str>::new(),
-            &state
-        ),
-    );
-    let op_move_to_b = Operation::new(
-        "op_move_to_b",
-        t!(
-            "start_move_to_b",
-            "var:ref_pos == a",
-            "true",
-            vec!("var:ref_pos <- b"),
-            Vec::<&str>::new(),
-            &state
-        ),
-        t!(
-            "complete_move_to_b",
-            "var:ref_pos == b",
-            "true",
-            vec!("var:act_pos <- b"),
-            Vec::<&str>::new(),
-            &state
-        ),
-    );
-    let op_move_to_c = Operation::new(
-        "op_move_to_c",
-        t!(
-            "start_move_to_c",
-            "var:ref_pos == b",
-            "true",
-            vec!("var:ref_pos <- c"),
-            Vec::<&str>::new(),
-            &state
-        ),
-        t!(
-            "complete_move_to_c",
-            "var:ref_pos == c",
-            "true",
-            vec!("var:act_pos <- c"),
-            Vec::<&str>::new(),
-            &state
-        ),
-    );
+    // let op_move_to_a = Operation::new(
+    //     "op_move_to_a",
+    //     t!(
+    //         "start_move_to_a",
+    //         "var:ref_pos != a",
+    //         "true",
+    //         vec!("var:ref_pos <- a"),
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    //     t!(
+    //         "complete_move_to_a",
+    //         "var:ref_pos == a",
+    //         "true",
+    //         vec!("var:act_pos <- a"),
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    // );
+    // let op_move_to_b = Operation::new(
+    //     "op_move_to_b",
+    //     t!(
+    //         "start_move_to_b",
+    //         "var:ref_pos == a",
+    //         "true",
+    //         vec!("var:ref_pos <- b"),
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    //     t!(
+    //         "complete_move_to_b",
+    //         "var:ref_pos == b",
+    //         "true",
+    //         vec!("var:act_pos <- b"),
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    // );
+    // let op_move_to_c = Operation::new(
+    //     "op_move_to_c",
+    //     t!(
+    //         "start_move_to_c",
+    //         "var:ref_pos == b",
+    //         "true",
+    //         vec!("var:ref_pos <- c"),
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    //     t!(
+    //         "complete_move_to_c",
+    //         "var:ref_pos == c",
+    //         "true",
+    //         vec!("var:act_pos <- c"),
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    // );
+
+        // Define the operations
+        let op_move_to_a = Operation::new(
+            "op_move_to_a",
+            t!(
+                "start_move_to_a",
+                "var:ref_pos != a && var:act_pos != a",
+                "true",
+                vec!("var:ref_pos <- a"),
+                Vec::<&str>::new(),
+                &state
+            ),
+            t!(
+                "complete_move_to_a",
+                "var:ref_pos == a", // && var:act_pos != a",
+                "var:act_pos == a",
+                vec!("var:act_pos <- a"),
+                Vec::<&str>::new(),
+                &state
+            ),
+        );
+        
+        let op_move_to_b = Operation::new(
+            "op_move_to_b",
+            t!(
+                "start_move_to_b",
+                "var:ref_pos == a && var:act_pos == a",
+                "true",
+                vec!("var:ref_pos <- b"),
+                Vec::<&str>::new(),
+                &state
+            ),
+            t!(
+                "complete_move_to_b",
+                "var:ref_pos == b", // && var:act_pos == a",
+                "var:act_pos == b",
+                vec!("var:act_pos <- b"),
+                Vec::<&str>::new(),
+                &state
+            ),
+        );
+    
+        let op_move_to_c = Operation::new(
+            "op_move_to_c",
+            t!(
+                "start_move_to_c",
+                "var:ref_pos == b && var:act_pos == b",
+                "true",
+                vec!("var:ref_pos <- c"),
+                Vec::<&str>::new(),
+                &state
+            ),
+            t!(
+                "complete_move_to_c",
+                "var:ref_pos == c", // && var:act_pos == b",
+                "var:act_pos == c",
+                vec!("var:act_pos <- c"),
+                Vec::<&str>::new(),
+                &state
+            ),
+        );
 
     Model::new(
         "asdf",

@@ -15,7 +15,7 @@ pub async fn dummy_pub_sub_subscriber_callback(
         match subscriber.next().await {
             Some(message) => {
                 let shared_state_local = shared_state.lock().unwrap().clone();
-                // will have to happen for each field, but can be generated
+                // will have to hapen for each field, but can be generated
                 let shared_state_local =
                     shared_state_local.update("act_pos", message.act_pos.to_spvalue());
                 *shared_state.lock().unwrap() = shared_state_local;

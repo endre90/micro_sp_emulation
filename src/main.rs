@@ -1,3 +1,4 @@
+use micro_sp::bfs_operation_planner;
 use r2r::QosProfile;
 use r2r::micro_sp_emulation_msgs::msg::DummyIncoming;
 use r2r::micro_sp_emulation_msgs::msg::DummyOutgoing;
@@ -11,6 +12,7 @@ mod runner;
 use runner::dummy_pub_sub_model::*;
 use runner::dummy_pub_sub_ticker::*;
 use runner::ticker::*;
+use runner::rita_model::*;
 
 
 #[tokio::main]
@@ -42,48 +44,55 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // waiting_for_ur_action_client.await?;
     r2r::log_info!(NODE_ID, "UR Action available.");
 
-    let model = the_model();
-    let shared_state = Arc::new(Mutex::new(model.state.clone()));
-    let shared_state_clone = shared_state.clone();
+    // test
+    let model = rita_model();
+    let plan = bfs_operation_planner(model.state.clone(), extract_goal_from_state(&model.state.clone()), model.operations.clone(), 30);
+    println!("{:?}", plan);
+
+    // let model = the_model();
+    // let shared_state = Arc::new(Mutex::new(model.state.clone()));
+    // let shared_state_clone = shared_state.clone();
    
-    tokio::task::spawn(async move {
-        let result = ticker(
-            NODE_ID,
-            // &ur_action_client,
-            &model,
-            &shared_state_clone.clone(),
-            ticker_timer,
-        )
-        .await;
-        match result {
-            Ok(()) => r2r::log_info!(NODE_ID, "Simple Controller Service call succeeded."),
-            Err(e) => r2r::log_error!(
-                NODE_ID,
-                "Simple Controller Service call failed with: {}.",
-                e
-            ),
-        };
-    });
+    // tokio::task::spawn(async move {
+    //     // wait for the measured values to update the state
+    //     tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+    //     let result = ticker(
+    //         NODE_ID,
+    //         // &ur_action_client,
+    //         &model,
+    //         &shared_state_clone.clone(),
+    //         ticker_timer,
+    //     )
+    //     .await;
+    //     match result {
+    //         Ok(()) => r2r::log_info!(NODE_ID, "Simple Controller Service call succeeded."),
+    //         Err(e) => r2r::log_error!(
+    //             NODE_ID,
+    //             "Simple Controller Service call failed with: {}.",
+    //             e
+    //         ),
+    //     };
+    // });
 
     
-    let shared_state_clone = shared_state.clone();
-    tokio::task::spawn(async move {
-        match dummy_pub_sub_subscriber_callback(&shared_state_clone, subscriber, NODE_ID).await {
-            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
-            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
-        };
-    });
+    // let shared_state_clone = shared_state.clone();
+    // tokio::task::spawn(async move {
+    //     match dummy_pub_sub_subscriber_callback(&shared_state_clone, subscriber, NODE_ID).await {
+    //         Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
+    //         Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
+    //     };
+    // });
 
     
-    let shared_state_clone = shared_state.clone();
-    tokio::task::spawn(async move {
-        let result =
-            dummy_pub_sub_publisher_callback(&shared_state_clone, publisher, publisher_timer, NODE_ID).await;
-        match result {
-            Ok(()) => r2r::log_info!(NODE_ID, "Publisher succeeded."),
-            Err(e) => r2r::log_error!(NODE_ID, "Publisher failed with: {}.", e),
-        };
-    });
+    // let shared_state_clone = shared_state.clone();
+    // tokio::task::spawn(async move {
+    //     let result =
+    //         dummy_pub_sub_publisher_callback(&shared_state_clone, publisher, publisher_timer, NODE_ID).await;
+    //     match result {
+    //         Ok(()) => r2r::log_info!(NODE_ID, "Publisher succeeded."),
+    //         Err(e) => r2r::log_error!(NODE_ID, "Publisher failed with: {}.", e),
+    //     };
+    // });
 
     handle.join().unwrap();
 

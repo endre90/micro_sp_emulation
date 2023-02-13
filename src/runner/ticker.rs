@@ -36,56 +36,6 @@ pub async fn update_shared_state(
     updated_state
 }
 
-// pub async fn new_ticker(
-//     node_id: &str,
-//     // ur_action_client: &r2r::ActionClient<URControl::Action>,
-//     model: &Model,
-//     shared_state: &Arc<Mutex<State>>,
-//     mut timer: r2r::Timer,
-// ) -> Result<(), Box<dyn std::error::Error>> {
-//     loop {
-//         let shared_state_local = shared_state.lock().unwrap().clone();
-//         let replan = shared_state_local.get_value("runner_replan");
-//         let replanned = shared_state_local.get_value("runner_replanned");
-
-//         println!("STATE: {}", shared_state_local);
-
-//         match (replan, replanned) {
-//             (SPValue::Bool(replan_val), SPValue::Bool(replanned_val)) => match replan_val {
-//                 true => match replanned_val {
-//                     true => {
-//                         update_shared_state(
-//                         vec![
-//                             ("runner_replan", false.to_spvalue()),
-//                             ("runner_replanned", false.to_spvalue()),
-//                         ],
-//                         shared_state,
-//                     )
-//                     .await;
-//                 },
-//                     false => {}
-//                 }
-//                 false => match replanned_val {
-//                     true => {
-//                         update_shared_state(
-//                         vec![
-//                             ("runner_replanned", false.to_spvalue()),
-//                         ],
-//                         shared_state,
-//                     )
-//                     .await;},
-//                     false => shared_state_local
-//                 }
-//             },
-//             (_, _) => shared_state_local,
-//         }
-
-//         tick_the_runner(node_id, &model, &shared_state).await?;
-
-//         timer.tick().await?;
-//     }
-// }
-
 pub async fn ticker(
     node_id: &str,
     // ur_action_client: &r2r::ActionClient<URControl::Action>,
