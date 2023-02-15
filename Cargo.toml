@@ -22,12 +22,12 @@ name = "runner"
 path = "src/main.rs"
 
 [[bin]]
-name = "stateful_dummy_pub_sub"
-path = "src/emulators/stateful_dummy_pub_sub.rs"
+name = "gantry_pub_sub_emu"
+path = "src/emulators/gantry_pub_sub_emu.rs"
 
 [[bin]]
-name = "stateless_dummy_pub_sub"
-path = "src/emulators/stateless_dummy_pub_sub.rs"
+name = "gripper_pub_sub_emu"
+path = "src/emulators/gripper_pub_sub_emu.rs"
 
 # [[bin]]
 # name = "set_state"

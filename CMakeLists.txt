@@ -24,13 +24,13 @@ r2r_cargo(std_msgs               # just to test that it works
          )
 
 # install binaries
-install(PROGRAMS
-  ${CMAKE_SOURCE_DIR}/target/release/micro_sp
-  DESTINATION lib/${PROJECT_NAME}
-)
+# install(PROGRAMS
+#   ${CMAKE_SOURCE_DIR}/target/release/micro_sp
+#   DESTINATION lib/${PROJECT_NAME}
+# )
 
-install(DIRECTORY templates
- DESTINATION share/${PROJECT_NAME})
+# install(DIRECTORY templates
+#  DESTINATION share/${PROJECT_NAME})
 
 # we need this for ros/colcon
 ament_package()

@@ -1,6 +1,17 @@
 use micro_sp::*;
 use serde_json::json;
 
+
+// will use this in the case 2023 papers
+
+// Resources:
+// 1. Robot
+// 2. Gantry
+// 3. Scanner
+// 4. Gripper
+// 5. Suction tool
+// 6. Localization algorithm -> Localization can just be started as soon as the items are scanned, 
+// which means that going there and picking the items depends on a runner guards that items are in the scene
 pub fn rita_model() -> Model {
 
     // Define the variables
@@ -15,8 +26,8 @@ pub fn rita_model() -> Model {
     let ur_mounted = v_estimated!("ur_mounted", vec!("none", "scanner", "gripper", "suction"));
 
     // 2. Gantry variables
-    let gantry_act = v_measured!("gantry_act", vec!("a", "b", "left", "right"));
-    let gantry_ref = v_command!("gantry_ref", vec!("a", "b", "left", "right"));
+    let gantry_act = v_measured!("gantry_act", vec!("a", "b", "atr"));
+    let gantry_ref = v_command!("gantry_ref", vec!("a", "b", "atr"));
 
     // 3. Scanner variables
     let scanner_trigger = bv_runner!("scanner_trigger");
@@ -30,9 +41,9 @@ pub fn rita_model() -> Model {
     let gripper_act = v_measured!("gripper_act", vec!("opened", "closed", "gripping"));
     let gripper_ref = v_command!("gripper_ref", vec!("opened", "closed"));
 
-    // 5. Suction tool variables
-    let suction_trigger = bv_runner!("suction_trigger");
-    let suction_state = v_estimated!("suction_state", vec!("on", "off"));
+    // // 5. Suction tool variables
+    // let suction_trigger = bv_runner!("suction_trigger");
+    // let suction_state = v_estimated!("suction_state", vec!("on", "off"));
 
     // 6. Localization variables
     let localization_trigger = bv_runner!("localization_trigger");
@@ -72,9 +83,9 @@ pub fn rita_model() -> Model {
     let state = state.add(assign!(gripper_act, SPValue::Unknown));
     let state = state.add(assign!(gripper_ref, SPValue::Unknown));
 
-    // 5. Suction variables
-    let state = state.add(assign!(suction_trigger, false.to_spvalue()));
-    let state = state.add(assign!(suction_state, SPValue::Unknown));
+    // // 5. Suction variables
+    // let state = state.add(assign!(suction_trigger, false.to_spvalue()));
+    // let state = state.add(assign!(suction_state, SPValue::Unknown));
 
     // 6. Localization variables
     let state = state.add(assign!(localization_trigger, false.to_spvalue()));
@@ -88,7 +99,8 @@ pub fn rita_model() -> Model {
     // included with the Model::new function...)
         let state = state.add(SPAssignment::new(
         v_runner!("runner_goal"),
-        "var:item_a_pose == atr".to_spvalue(),
+        // "var:item_a_pose == atr && var:item_b_pose == atr".to_spvalue(),
+        "var:gantry_act == atr && var:gripper_act == opened".to_spvalue()
     ));
     let state = state.add(SPAssignment::new(
         av_runner!("runner_plan"),
@@ -115,6 +127,7 @@ pub fn rita_model() -> Model {
     // be executed if evaluated to be true)
     let autos: Vec<Transition> = vec!();
 
+    // might need this later for autogeneration but now we hardcode everything...
     // // Define the message types
     // let dummy_ougoing_msg = json!({
     //     "ref_pos": "String"
@@ -157,7 +170,7 @@ pub fn rita_model() -> Model {
     // ------------------------------------------------
     let mut operations = vec!();
     // 1. Robot move operations
-    for pose in vec!("home", "rack_scanner", "rack_gripper", "rack_suction", "box_a", "box_b", "item_a", "item_b", "atr") {
+    for pose in vec!("home", "rack_scanner", "rack_gripper", "rack_suction", "box_a", "box_b", "atr", "item_a", "item_b") {
         operations.push(
             Operation::new(
                 &format!("op_robot_move_to_{pose}"), 
@@ -194,7 +207,7 @@ pub fn rita_model() -> Model {
     }
 
     // 2. Gantry operations
-    for pose in vec!("a", "b", "left", "right") {
+    for pose in vec!("a", "b", "atr") {
         operations.push(
             Operation::new(
                 &format!("op_gantry_move_to_{pose}"), 
@@ -203,7 +216,7 @@ pub fn rita_model() -> Model {
                     // name
                     &format!("start_gantry_move_to_{pose}").as_str(),
                     // planner guard
-                    &format!("var:gantry_ref != {pose} && var:gantry_act != {pose} && var:ur_pose == home").as_str(),
+                    &format!("var:gantry_ref != {pose} && var:gantry_act != {pose}").as_str(), // && var:ur_pose == home").as_str(),
                     // runner guard
                     "true",
                     // planner actions
@@ -265,7 +278,7 @@ pub fn rita_model() -> Model {
                     // runner guard
                     "true",
                     // planner actions
-                    vec!(&format!("var:scanned_{pose} <- true").as_str()),
+                    vec!("var:scanner_trigger <- false", &format!("var:scanned_{pose} <- true").as_str()),
                     //runner actions
                     Vec::<&str>::new(),
                     &state
@@ -273,6 +286,76 @@ pub fn rita_model() -> Model {
             )
         )
     }
+
+    // 4. Gripper close operation
+    operations.push(
+        Operation::new(
+            &format!("op_gripper_close"), 
+            // precondition
+            t!(
+                // name
+                "start_gripper_close",
+                // planner guard
+                "var:gripper_ref != closed",
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:gripper_ref <- closed"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                "complete_gripper_close",
+                // planner guard
+                "var:gripper_ref == closed",
+                // runner guard
+                "var:gripper_act == gripping",
+                // planner actions
+                vec!("var:gripper_act <- gripping"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        )
+    );
+
+    // 4. Gripper open operation
+    operations.push(
+        Operation::new(
+            &format!("op_gripper_open"), 
+            // precondition
+            t!(
+                // name
+                "start_gripper_open",
+                // planner guard
+                "var:gripper_ref != opened",
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:gripper_ref <- opened"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                "complete_gripper_open",
+                // planner guard
+                "var:gripper_ref == opened",
+                // runner guard
+                "var:gripper_act == opened",
+                // planner actions
+                vec!("var:gripper_act <- opened"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        )
+    );
 
     // 4. Gripper operation: pick item_a
     operations.push(
@@ -283,18 +366,18 @@ pub fn rita_model() -> Model {
                 // name
                 &format!("start_pick_a").as_str(),
                 // planner guard
+                // maybe for gripper we don't need this: \ && (var:gripper_act != closed || var:gripper_act != gripping) && \
                 &format!("\
-                    var:gripper_ref != closed && (var:gripper_act != closed || var:gripper_act != gripping) && \
+                    var:ur_mounted == gripper && \
+                    var:gripper_ref != closed && \
                     var:scanned_a == true && \
-                    var:ur_action_trigger == false && \
-                    var:ur_action_state == initial && \
-                    var:ur_pose == box_a && \
+                    var:ur_pose == item_a && \
                     var:item_a_pose == box_a"
                 ).as_str(),
                 // runner guard
                 "true",
                 // planner actions
-                vec!("var:ur_command <- pick_with_gripper", "var:ur_action_trigger <- true"),
+                vec!("var:gripper_ref <- closed"),
                 //runner actions
                 Vec::<&str>::new(),
                 &state
@@ -304,11 +387,53 @@ pub fn rita_model() -> Model {
                 // name
                 &format!("complete_pick_a").as_str(),
                 // planner guard
-                &format!("var:ur_action_state == done").as_str(),
+                &format!("var:gripper_ref == closed").as_str(),
                 // runner guard
                 &format!("var:gripper_act == gripping").as_str(),
                 // planner actions
-                vec!("var:ur_action_trigger <- false", "var:gripper_act <- gripping", "var:item_a_pose <- gripper"),
+                vec!("var:gripper_act <- gripping", "var:item_a_pose <- gripper"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        )
+    );
+
+    // 4. Suction operation: pick item_b
+    operations.push(
+        Operation::new(
+            &format!("op_pick_b"), 
+            // precondition
+            t!(
+                // name
+                &format!("start_pick_b").as_str(),
+                // planner guard
+                &format!("\
+                    var:ur_mounted == suction && \
+                    var:scanned_b == true && \
+                    var:ur_action_trigger == false && \
+                    var:ur_action_state == initial && \
+                    var:ur_pose == box_b && \
+                    var:item_b_pose == box_b"
+                ).as_str(),
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:ur_command <- pick_with_suction", "var:ur_action_trigger <- true"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                &format!("complete_pick_b").as_str(),
+                // planner guard
+                &format!("var:ur_action_state == done").as_str(), // this can fail
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:ur_action_trigger <- false", "var:item_b_pose <- suction"),
                 //runner actions
                 Vec::<&str>::new(),
                 &state
@@ -326,9 +451,8 @@ pub fn rita_model() -> Model {
                 &format!("start_place_a").as_str(),
                 // planner guard
                 &format!("\
+                    var:ur_mounted == gripper && \
                     var:item_a_pose == gripper && \
-                    var:ur_action_trigger == false && \
-                    var:ur_action_state == initial && \
                     var:ur_pose == atr"
                 ).as_str(),
                 // runner guard
@@ -344,11 +468,52 @@ pub fn rita_model() -> Model {
                 // name
                 &format!("complete_place_a").as_str(),
                 // planner guard
-                &format!("var:ur_action_state == done").as_str(),
+                &format!("var:gripper_ref == opened").as_str(),
                 // runner guard
                 &format!("var:gripper_act == opened").as_str(),
                 // planner actions
-                vec!("var:ur_action_trigger <- false", "var:gripper_act <- opened", "var:item_a_pose <- atr"),
+                vec!("var:gripper_act <- opened", "var:item_a_pose <- atr"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        )
+    );
+
+    // 5. Suction operation: place item_b
+    operations.push(
+        Operation::new(
+            &format!("op_place_b"), 
+            // precondition
+            t!(
+                // name
+                &format!("start_place_b").as_str(),
+                // planner guard
+                &format!("\
+                    var:ur_mounted == suction && \
+                    var:item_b_pose == suction && \
+                    var:ur_action_trigger == false && \
+                    var:ur_action_state == initial && \
+                    var:ur_pose == atr"
+                ).as_str(),
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:ur_command <- place_with_suction", "var:ur_action_trigger <- true"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                &format!("complete_place_b").as_str(),
+                // planner guard
+                &format!("var:ur_action_state == done").as_str(),
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:ur_action_trigger <- false", "var:item_b_pose <- atr"),
                 //runner actions
                 Vec::<&str>::new(),
                 &state
@@ -385,6 +550,43 @@ pub fn rita_model() -> Model {
                     "true",
                     // planner actions
                     vec!("var:ur_action_trigger <- false", &format!("var:ur_mounted <- {tool}").as_str()),
+                    //runner actions
+                    Vec::<&str>::new(),
+                    &state
+                ),
+            )
+        )
+    }
+
+    // 5. Robot unmount tool operations
+    for tool in vec!("scanner", "gripper", "suction") {
+        operations.push(
+            Operation::new(
+                &format!("op_robot_unmount_{tool}"), 
+                // precondition
+                t!(
+                    // name
+                    &format!("start_robot_unmount_{tool}").as_str(),
+                    // planner guard
+                    &format!("var:ur_action_trigger == false && var:ur_action_state == initial && var:ur_pose == rack_{tool} && var:ur_mounted == {tool}").as_str(),
+                    // runner guard
+                    "true",
+                    // planner actions
+                    vec!("var:ur_command <- unmount", "var:ur_action_trigger <- true"),
+                    //runner actions
+                    Vec::<&str>::new(),
+                    &state
+                ),
+                // postcondition
+                t!(
+                    // name
+                    &format!("complete_robot_unmount_{tool}").as_str(),
+                    // planner guard
+                    &format!("var:ur_action_state == done").as_str(),
+                    // runner guard
+                    "true",
+                    // planner actions
+                    vec!("var:ur_action_trigger <- false", &format!("var:ur_mounted <- none").as_str()),
                     //runner actions
                     Vec::<&str>::new(),
                     &state

@@ -61,7 +61,7 @@ pub async fn ticker(
                 let new_state = update_shared_state(("runner_replanned", true.to_spvalue()), shared_state).await;
                 let goal = extract_goal_from_state(&new_state);
                 let new_plan =
-                    bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 30);
+                    bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 40);
                 match new_plan.found {
                     false => {
                         r2r::log_warn!(node_id, "No plan was found.");
@@ -168,7 +168,7 @@ async fn tick_the_runner(
                                     format!("Waiting for {current_op_name} to be enabled.")
                                         .to_spvalue(),
                                 )
-                            } else if current_op.clone().is_completed(&state) {
+                            } else if current_op.clone().can_be_completed(&state) {
                                 // the operation has completed and we can take a step in the plan
                                 let next_state = current_op.clone().complete_running(&state);
                                 let next_state = next_state.update(
