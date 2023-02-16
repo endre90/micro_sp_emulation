@@ -100,7 +100,7 @@ pub fn rita_model() -> Model {
         let state = state.add(SPAssignment::new(
         v_runner!("runner_goal"),
         // "var:item_a_pose == atr && var:item_b_pose == atr".to_spvalue(),
-        "var:gantry_act == atr && var:gripper_act == opened && var:ur_pose == home".to_spvalue()
+        "var:item_a_pose == gripper".to_spvalue()
     ));
     let state = state.add(SPAssignment::new(
         av_runner!("runner_plan"),
@@ -274,7 +274,7 @@ pub fn rita_model() -> Model {
                     // name
                     &format!("complete_scan_box_{pose}").as_str(),
                     // planner guard
-                    &format!("var:scanner_state == done").as_str(),
+                    &format!("var:scanner_state == succeeded").as_str(),
                     // runner guard
                     "true",
                     // planner actions
@@ -545,7 +545,7 @@ pub fn rita_model() -> Model {
                     // name
                     &format!("complete_robot_mount_{tool}").as_str(),
                     // planner guard
-                    &format!("var:ur_action_state == done").as_str(),
+                    &format!("var:ur_action_state == succeeded").as_str(),
                     // runner guard
                     "true",
                     // planner actions
@@ -582,7 +582,7 @@ pub fn rita_model() -> Model {
                     // name
                     &format!("complete_robot_unmount_{tool}").as_str(),
                     // planner guard
-                    &format!("var:ur_action_state == done").as_str(),
+                    &format!("var:ur_action_state == succeeded").as_str(),
                     // runner guard
                     "true",
                     // planner actions

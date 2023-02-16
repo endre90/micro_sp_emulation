@@ -8,8 +8,8 @@ use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 pub static NODE_ID: &'static str = "robot_action_emu";
-pub static PUBLISHER_RATE: u64 = 100;
-pub static STATE_UPDATE_RATE: u64 = 1000;
+// pub static PUBLISHER_RATE: u64 = 1000;
+// pub static STATE_UPDATE_RATE: u64 = 1000;
 
 // pub fn make_initial_state() -> State {
 //     let state = State::new();

@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 pub static NODE_ID: &'static str = "gripper_pub_sub_emu";
 pub static PUBLISHER_RATE: u64 = 100;
-pub static STATE_UPDATE_RATE: u64 = 1000;
+pub static STATE_UPDATE_RATE: u64 = 100;
 
 pub fn make_initial_state() -> State {
     let state = State::new();

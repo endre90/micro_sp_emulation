@@ -60,6 +60,7 @@ pub async fn ticker(
             (SPValue::Bool(true), SPValue::Bool(false)) => {
                 let new_state = update_shared_state(("runner_replanned", true.to_spvalue()), shared_state).await;
                 let goal = extract_goal_from_state(&new_state);
+                println!("REPLAN TRIGGERED!");
                 let new_plan =
                     bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 40);
                 match new_plan.found {
