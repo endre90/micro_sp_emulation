@@ -95,12 +95,12 @@ pub fn rita_model() -> Model {
     let state = state.add(assign!(item_a_pose, "box_a".to_spvalue()));
     let state = state.add(assign!(item_b_pose, "box_b".to_spvalue()));
     
-    // And some mandatory variables (actually, these should be 
-    // included with the Model::new function...)
+    // And some mandatory variables (actually, these should be automatically
+    // included when calling Model::new()...)
         let state = state.add(SPAssignment::new(
         v_runner!("runner_goal"),
         // "var:item_a_pose == atr && var:item_b_pose == atr".to_spvalue(),
-        "var:gantry_act == atr && var:gripper_act == opened".to_spvalue()
+        "var:gantry_act == atr && var:gripper_act == opened && var:ur_pose == home".to_spvalue()
     ));
     let state = state.add(SPAssignment::new(
         av_runner!("runner_plan"),
@@ -193,7 +193,7 @@ pub fn rita_model() -> Model {
                     // name
                     &format!("complete_robot_move_to_{pose}").as_str(),
                     // planner guard
-                    &format!("var:ur_action_state == done").as_str(),
+                    &format!("var:ur_action_state == succeeded").as_str(),
                     // runner guard
                     "true",
                     // planner actions

@@ -4,6 +4,7 @@ use r2r::micro_sp_emulation_msgs::msg::GantryIncoming;
 use r2r::micro_sp_emulation_msgs::msg::GantryOutgoing;
 use r2r::micro_sp_emulation_msgs::msg::GripperIncoming;
 use r2r::micro_sp_emulation_msgs::msg::GripperOutgoing;
+use r2r::micro_sp_emulation_msgs::action::URCommand;
 use std::sync::{Arc, Mutex};
 
 pub static NODE_ID: &'static str = "micro_sp_runner";
@@ -14,6 +15,7 @@ mod runner;
 // use runner::dummy_pub_sub_model::*;
 use runner::gantry_pub_sub_ticker::*;
 use runner::gripper_pub_sub_ticker::*;
+use runner::robot_action_ticker::*;
 use runner::ticker::*;
 use runner::rita_model::*;
 
@@ -39,6 +41,47 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         QosProfile::best_effort(QosProfile::default()),
     )?;
 
+    // test
+    let model = rita_model();
+    // let plan = bfs_operation_planner(model.state.clone(), extract_goal_from_state(&model.state.clone()), model.operations.clone(), 50);
+    // for p in plan.plan {
+    //     println!("{}", p);
+    // }
+
+    let shared_state = Arc::new(Mutex::new(model.state.clone()));
+
+    let robot_action_client = node.create_action_client::<URCommand::Action>("robot_action")?;
+    let waiting_for_robot_action_server = node.is_available(&robot_action_client)?;
+
+    let shared_state_clone = shared_state.clone();
+    let robot_action_timer =
+        node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
+    tokio::task::spawn(async move {
+        match robot_action_ticker(&robot_action_client, waiting_for_robot_action_server, &shared_state_clone, robot_action_timer, NODE_ID).await {
+            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
+        };
+    });
+    
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        match gantry_pub_sub_subscriber_callback(&shared_state_clone, gantry_subscriber, NODE_ID).await {
+            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
+        };
+    });
+
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        match gripper_pub_sub_subscriber_callback(&shared_state_clone, gripper_subscriber, NODE_ID).await {
+            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
+        };
+    });
+
+    // wait for the measured values to update the state
+    tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+
     let gantry_publisher_timer =
         node.create_wall_timer(std::time::Duration::from_millis(PUBLISHER_RATE))?;
     let gantry_publisher =
@@ -48,29 +91,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         node.create_wall_timer(std::time::Duration::from_millis(PUBLISHER_RATE))?;
     let gripper_publisher =
         node.create_publisher::<GripperOutgoing>("gripper_outgoing", QosProfile::default())?;
-
-    // r2r::log_warn!(NODE_ID, "Waiting for the UR Action Service...");
-    // // waiting_for_ur_action_client.await?;
-    // r2r::log_info!(NODE_ID, "UR Action available.");
-
-    // test
-    let model = rita_model();
-    // let plan = bfs_operation_planner(model.state.clone(), extract_goal_from_state(&model.state.clone()), model.operations.clone(), 50);
-    // for p in plan.plan {
-    //     println!("{}", p);
-    // }
-    
-
-    // let model = the_model();
-    let shared_state = Arc::new(Mutex::new(model.state.clone()));
-    
-    let shared_state_clone = shared_state.clone();
-    tokio::task::spawn(async move {
-        match gantry_pub_sub_subscriber_callback(&shared_state_clone, gantry_subscriber, NODE_ID).await {
-            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
-            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
-        };
-    });
 
     let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
@@ -85,17 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
         // wait for the measured values to update the state
-        tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
-        match gripper_pub_sub_subscriber_callback(&shared_state_clone, gripper_subscriber, NODE_ID).await {
-            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
-            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
-        };
-    });
-
-    let shared_state_clone = shared_state.clone();
-    tokio::task::spawn(async move {
-        // wait for the measured values to update the state
-        tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+        // tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
         let result =
             gripper_pub_sub_publisher_callback(&shared_state_clone, gripper_publisher, gripper_publisher_timer, NODE_ID).await;
         match result {
@@ -107,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
     // wait for the measured values to update the state
-    tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+    // tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
         let result = ticker(
             NODE_ID,
             // &ur_action_client,
@@ -125,7 +135,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ),
         };
     });
-    
+
     let handle = std::thread::spawn(move || loop {
         node.spin_once(std::time::Duration::from_millis(100));
     });
