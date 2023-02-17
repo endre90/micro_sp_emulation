@@ -43,6 +43,8 @@ pub async fn ticker(
     shared_state: &Arc<Mutex<State>>,
     mut timer: r2r::Timer,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // wait for the measured values to update the state
+    tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
     loop {
 
         let shared_state_local = shared_state.lock().unwrap().clone();
@@ -62,7 +64,7 @@ pub async fn ticker(
                 let goal = extract_goal_from_state(&new_state);
                 println!("REPLAN TRIGGERED!");
                 let new_plan =
-                    bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 40);
+                    bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 30);
                 match new_plan.found {
                     false => {
                         r2r::log_warn!(node_id, "No plan was found.");

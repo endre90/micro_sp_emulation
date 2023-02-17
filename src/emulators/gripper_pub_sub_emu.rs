@@ -121,7 +121,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // spawn a tokio task to listen to messages from micro_sp
     let subscriber = node.subscribe::<GripperOutgoing>(
         "gripper_outgoing",
-        QosProfile::best_effort(QosProfile::default()),
+        QosProfile::default().reliable()
     )?;
     let emulator_state_clone = emulator_state.clone();
     tokio::task::spawn(async move {
@@ -134,7 +134,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let publisher_timer =
         node.create_wall_timer(std::time::Duration::from_millis(PUBLISHER_RATE))?;
     let publisher =
-        node.create_publisher::<GripperIncoming>("gripper_incoming", QosProfile::default())?;
+        node.create_publisher::<GripperIncoming>("gripper_incoming", QosProfile::default().reliable())?;
     let emulator_state_clone = emulator_state.clone();
     tokio::task::spawn(async move {
         let result =
@@ -158,7 +158,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // keep the node alive
     let handle = std::thread::spawn(move || loop {
-        node.spin_once(std::time::Duration::from_millis(1000));
+        node.spin_once(std::time::Duration::from_millis(20));
     });
 
     r2r::log_warn!(NODE_ID, "Node started.");

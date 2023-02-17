@@ -35,12 +35,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let gantry_subscriber = node.subscribe::<GantryIncoming>(
         "gantry_incoming",
-        QosProfile::best_effort(QosProfile::default()),
+        QosProfile::default().reliable()
     )?;
 
     let gripper_subscriber = node.subscribe::<GripperIncoming>(
         "gripper_incoming",
-        QosProfile::best_effort(QosProfile::default()),
+        QosProfile::default().reliable()
     )?;
 
     // test
@@ -119,15 +119,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let gantry_publisher_timer =
         node.create_wall_timer(std::time::Duration::from_millis(PUBLISHER_RATE))?;
     let gantry_publisher =
-        node.create_publisher::<GantryOutgoing>("gantry_outgoing", QosProfile::default())?;
+        node.create_publisher::<GantryOutgoing>("gantry_outgoing", QosProfile::default().reliable())?;
 
     let gripper_publisher_timer =
         node.create_wall_timer(std::time::Duration::from_millis(PUBLISHER_RATE))?;
     let gripper_publisher =
-        node.create_publisher::<GripperOutgoing>("gripper_outgoing", QosProfile::default())?;
+        node.create_publisher::<GripperOutgoing>("gripper_outgoing", QosProfile::default().reliable())?;
 
     let handle = std::thread::spawn(move || loop {
-        node.spin_once(std::time::Duration::from_millis(100));
+        node.spin_once(std::time::Duration::from_millis(20));
     });
 
     // wait for the measured values to update the state

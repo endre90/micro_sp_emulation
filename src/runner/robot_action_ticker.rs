@@ -49,43 +49,43 @@ pub async fn robot_action_ticker(
                     match result.await {
                         Ok((status, _)) => match status {
                             r2r::GoalStatus::Aborted => {
-                                r2r::log_info!(node_id, "Robot action goal state: aborted.");
+                                // r2r::log_info!(node_id, "Robot action goal state: aborted.");
                                 let shared_state_local =
                                     shared_state_local.update("ur_action_state", "aborted".to_spvalue());
                                     *shared_state.lock().unwrap() = shared_state_local;
                             }
                             r2r::GoalStatus::Accepted => {
-                                r2r::log_info!(node_id, "Robot action goal state: accepted.");
+                                // r2r::log_info!(node_id, "Robot action goal state: accepted.");
                                 let shared_state_local =
                                     shared_state_local.update("ur_action_state", "accepted".to_spvalue());
                                     *shared_state.lock().unwrap() = shared_state_local;
                             }
                             r2r::GoalStatus::Canceled => {
-                                r2r::log_info!(node_id, "Robot action goal state: cancelled.");
+                                // r2r::log_info!(node_id, "Robot action goal state: cancelled.");
                                 let shared_state_local =
                                     shared_state_local.update("ur_action_state", "cancelled".to_spvalue());
                                     *shared_state.lock().unwrap() = shared_state_local;
                             }
                             r2r::GoalStatus::Canceling => {
-                                r2r::log_info!(node_id, "Robot action goal state: cancelling.");
+                                // r2r::log_info!(node_id, "Robot action goal state: cancelling.");
                                 let shared_state_local =
                                     shared_state_local.update("ur_action_state", "cancelling".to_spvalue());
                                     *shared_state.lock().unwrap() = shared_state_local;
                             }
                             r2r::GoalStatus::Executing => {
-                                r2r::log_info!(node_id, "Robot action goal state: executing.");
+                                // r2r::log_info!(node_id, "Robot action goal state: executing.");
                                 let shared_state_local =
                                     shared_state_local.update("ur_action_state", "executing".to_spvalue());
                                     *shared_state.lock().unwrap() = shared_state_local;
                             }
                             r2r::GoalStatus::Succeeded => {
-                                r2r::log_info!(node_id, "Robot action goal state: succeeded.");
+                                // r2r::log_info!(node_id, "Robot action goal state: succeeded.");
                                 let shared_state_local =
                                     shared_state_local.update("ur_action_state", "succeeded".to_spvalue());
                                     *shared_state.lock().unwrap() = shared_state_local;
                             }
                             r2r::GoalStatus::Unknown => {
-                                r2r::log_info!(node_id, "Robot action goal state: unknown.");
+                                // r2r::log_info!(node_id, "Robot action goal state: unknown.");
                                 let shared_state_local =
                                     shared_state_local.update("ur_action_state", "unknown".to_spvalue());
                                     *shared_state.lock().unwrap() = shared_state_local;
@@ -93,7 +93,7 @@ pub async fn robot_action_ticker(
                         },
                         Err(e) => {
                             r2r::log_error!(node_id, "Robot action failed with: {:?}", e,);
-                            r2r::log_error!(node_id, "Robot action goal state: failed.");
+                            // r2r::log_error!(node_id, "Robot action goal state: failed.");
                             let shared_state_local =
                                 shared_state_local.update("ur_action_state", "failed".to_spvalue());
                                 *shared_state.lock().unwrap() = shared_state_local;
@@ -103,7 +103,7 @@ pub async fn robot_action_ticker(
                 _ => ()
             };
         } else {
-            r2r::log_info!(node_id, "Robot action goal state: initial.");
+            // r2r::log_info!(node_id, "Robot action goal state: initial.");
             let shared_state_local =
                 shared_state_local.update("ur_action_state", "initial".to_spvalue());
             *shared_state.lock().unwrap() = shared_state_local;

@@ -33,20 +33,20 @@ pub async fn scanner_client_ticker(
 
             match response.success {
                 true => {
-                    r2r::log_info!(node_id, "Scanner service state: succeeded.");
+                    // r2r::log_info!(node_id, "Scanner service state: succeeded.");
                     let shared_state_local =
                         shared_state_local.update("scanner_state", "succeeded".to_spvalue());
                     *shared_state.lock().unwrap() = shared_state_local;
                 },
                 false => {
-                    r2r::log_info!(node_id, "Scanner service state: failed.");
+                    // r2r::log_info!(node_id, "Scanner service state: failed.");
                     let shared_state_local =
                         shared_state_local.update("scanner_state", "failed".to_spvalue());
                     *shared_state.lock().unwrap() = shared_state_local;
                 },
             }
         } else {
-            r2r::log_info!(node_id, "Scanner service state: initial.");
+            // r2r::log_info!(node_id, "Scanner service state: initial.");
             let shared_state_local =
                 shared_state_local.update("scanner_state", "initial".to_spvalue());
             *shared_state.lock().unwrap() = shared_state_local;

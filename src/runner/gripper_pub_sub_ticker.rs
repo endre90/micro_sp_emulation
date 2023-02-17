@@ -31,6 +31,8 @@ pub async fn gripper_pub_sub_publisher_callback(
     mut timer: r2r::Timer,
     node_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // wait for the measured values to update the state
+    tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
     loop {
         let shared_state_local = shared_state.lock().unwrap().clone();
         let msg = GripperOutgoing {

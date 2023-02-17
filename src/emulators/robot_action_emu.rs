@@ -118,7 +118,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // keep the node alive
     let handle = std::thread::spawn(move || loop {
-        node.spin_once(std::time::Duration::from_millis(1000));
+        node.spin_once(std::time::Duration::from_millis(20));
     });
 
     r2r::log_warn!(NODE_ID, "Node started.");

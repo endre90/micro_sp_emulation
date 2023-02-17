@@ -170,7 +170,7 @@ pub fn rita_model() -> Model {
     // ------------------------------------------------
     let mut operations = vec!();
     // 1. Robot move operations
-    for pose in vec!("home", "rack_scanner", "rack_gripper", "rack_suction", "box_a", "box_b", "atr", "item_a", "item_b") {
+    for pose in vec!("home", "rack_scanner", "rack_gripper", "rack_suction", "box_a", "box_b", "atr", "item_a") {
         operations.push(
             Operation::new(
                 &format!("op_robot_move_to_{pose}"), 
@@ -216,7 +216,7 @@ pub fn rita_model() -> Model {
                     // name
                     &format!("start_gantry_move_to_{pose}").as_str(),
                     // planner guard
-                    &format!("var:gantry_ref != {pose} && var:gantry_act != {pose}").as_str(), // && var:ur_pose == home").as_str(),
+                    &format!("var:gantry_ref != {pose}").as_str(), // && var:ur_pose == home").as_str(),
                     // runner guard
                     "true",
                     // planner actions
@@ -370,6 +370,7 @@ pub fn rita_model() -> Model {
                 &format!("\
                     var:ur_mounted == gripper && \
                     var:gripper_ref != closed && \
+                    (var:gripper_act != closed && var:gripper_act != gripping) && \
                     var:scanned_a == true && \
                     var:ur_pose == item_a && \
                     var:item_a_pose == box_a"
