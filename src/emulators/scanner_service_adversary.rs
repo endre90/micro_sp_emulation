@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // keep the node alive
     let handle = std::thread::spawn(move || loop {
-        node.spin_once(std::time::Duration::from_millis(100));
+        node.spin_once(std::time::Duration::from_millis(20));
     });
 
     r2r::log_warn!(NODE_ID, "Node started.");
@@ -47,15 +47,28 @@ pub async fn scanner_server(
             Some(request) => {
                 println!("Got request: {:?}", request.message);
 
-                let response = TriggerScan::Response {
-                    success: true,
-                    info: "just succeeding...".to_string(),
-                };
-                println!("just succeeding...");
-                request
-                    .respond(response)
-                    .expect("Could not send service response.");
-                continue;
+                // Adversary: 50/50 that we succeed or abort
+                if rand::random::<bool>() {
+                    let response = TriggerScan::Response {
+                        success: true,
+                        info: "just succeeding...".to_string(),
+                    };
+                    println!("just succeeding...");
+                    request
+                        .respond(response)
+                        .expect("Could not send service response.");
+                    continue;
+                } else {
+                    let response = TriggerScan::Response {
+                        success: false,
+                        info: "just failing...".to_string(),
+                    };
+                    println!("just failing...");
+                    request
+                        .respond(response)
+                        .expect("Could not send service response.");
+                    continue;
+                }
             }
 
             None => (),

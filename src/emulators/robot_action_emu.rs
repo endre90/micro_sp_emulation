@@ -132,12 +132,16 @@ pub async fn robot_action_server(
     // shared_state: &Arc<Mutex<State>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     loop {
+        // tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+        // filter the actions of operations and the command from the message to figure out which one is to be taken
         match requests.next().await {
             Some(request) => {
                 println!("Got goal request: {:?}", request.goal);
+                
                 let (mut g, mut _cancel) =
                     request.accept().expect("Could not accept goal request.");
-                // filter the actions of operations and the command from the message to figure out which one is to be taken
+                    // emulate task execution time
+               
                 println!("just_succeeding...");
                 g.succeed(URCommand::Result { 
                     success: true,
