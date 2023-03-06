@@ -31,7 +31,7 @@ pub async fn scanner_client_ticker(
 ) -> Result<(), Box<dyn std::error::Error>> {
     r2r::log_warn!(node_id, "Waiting for the scanner server...");
     wait_for_server.await?;
-    r2r::log_info!(node_id, "Scanner server available.");
+    r2r::log_warn!(node_id, "Scanner server available.");
     loop {
         let shared_state_local = shared_state.lock().unwrap().clone();
         let scanner_trigger = match shared_state_local.get_value("scanner_trigger") {

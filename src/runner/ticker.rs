@@ -62,7 +62,7 @@ pub async fn ticker(
                     update_shared_state(("runner_replanned", true.to_spvalue()), shared_state)
                         .await;
                 let goal = extract_goal_from_state(&new_state);
-                println!("REPLAN TRIGGERED!");
+                r2r::log_warn!(node_id, "Re-plan triggered.");
                 let new_plan =
                     bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 30);
                 match new_plan.found {
@@ -76,7 +76,7 @@ pub async fn ticker(
                             new_state
                         }
                         false => {
-                            r2r::log_info!(node_id, "A new plan was found: {:?}.", new_plan.plan);
+                            r2r::log_warn!(node_id, "A new plan was found: {:?}.", new_plan.plan);
                             update_shared_state(
                                 ("runner_plan", new_plan.plan.to_spvalue()),
                                 shared_state,
@@ -95,7 +95,7 @@ pub async fn ticker(
         let new_state = tick_the_runner(node_id, &model, &shared_state).await;
 
         if new_state != old_state {
-            println!("STATE: {}", new_state);
+            println!("{}", new_state);
         }
 
         old_state = new_state.clone();
