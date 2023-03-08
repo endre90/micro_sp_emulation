@@ -36,6 +36,18 @@ pub async fn update_shared_state(
     updated_state
 }
 
+pub fn reset_all_operations(shared_state: &Arc<Mutex<State>>,) -> State {
+    let mut mut_state = shared_state.lock().unwrap().clone();
+    let state = mut_state.clone();
+    state.state.iter().for_each(|(k, _)| {
+        if k.starts_with("op_") {
+            mut_state = mut_state.update(&k, "initial".to_spvalue());
+        }
+    });
+    *shared_state.lock().unwrap() = mut_state.clone();
+    mut_state
+}
+
 pub async fn ticker(
     node_id: &str,
     // ur_action_client: &r2r::ActionClient<URControl::Action>,
@@ -56,17 +68,23 @@ pub async fn ticker(
             (SPValue::Bool(true), SPValue::Bool(true)) => {
                 update_shared_state(("runner_replan", false.to_spvalue()), shared_state).await;
                 update_shared_state(("runner_replanned", false.to_spvalue()), shared_state).await
+                // reset_all_operations(&new_state)
             }
             (SPValue::Bool(true), SPValue::Bool(false)) => {
                 let new_state =
                     update_shared_state(("runner_replanned", true.to_spvalue()), shared_state)
                         .await;
                 let goal = extract_goal_from_state(&new_state);
-                r2r::log_warn!(node_id, "Re-plan triggered.");
+                let new_state = reset_all_operations(&shared_state);
+                r2r::log_warn!(node_id, "Re-plan triggered in the following state:");
+                println!("{}", new_state);
                 let new_plan =
                     bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 30);
+                // println!("{:?}", new_plan);
+                // println!("{:?}", model.operations);
                 match new_plan.found {
                     false => {
+                        
                         r2r::log_warn!(node_id, "No plan was found.");
                         new_state
                     }
@@ -110,19 +128,25 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
     //Result<(), Box<dyn std::error::Error>> {
     let mut state = shared_state.lock().unwrap().clone();
 
-    let old_state = state.clone();
+    // let old_state = state.clone();
 
     // Here you can execute the free transitions by checking if they are enabled and then do take_running on them
-    model.transitions.iter().for_each(|t| {
+    // only one in a scan cycle for now... FIX THIS!
+    for t in &model.auto_transitions {
         if t.clone().eval_running(&state) {
+            r2r::log_warn!(node_id, "Taking the free transition: {}.", t.name);
             state = t.clone().take_running(&state);
+            // break // FIX THIS!
+            // *shared_state.lock().unwrap() = state.clone();
         } else {
             state = state.clone()
         }
-    });
+    }
+
+    let updated_state = state.clone();
 
     // TODO: allow unknown in domain of all variables
-    let the_plan = state.get_value("runner_plan");
+    let the_plan = updated_state.get_value("runner_plan");
     match the_plan {
         SPValue::Array(_, plan) => match plan.is_empty() {
             true => {
@@ -148,6 +172,11 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
                             shared_state,
                         )
                         .await;
+                        update_shared_state(
+                            ("runner_goal", SPValue::Unknown),
+                            shared_state,
+                        )
+                        .await;
                         update_shared_state(("runner_plan", SPValue::Unknown), shared_state).await;
                         update_shared_state(
                             ("runner_plan_current_step", SPValue::Unknown),
@@ -158,7 +187,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
                     false => {
                         let current_op_name = match plan[current_step_in_plan as usize].clone() {
                             SPValue::String(op_name) => op_name.to_string(),
-                            _ => panic!("no sucnext_stateh op name"),
+                            _ => panic!("no such op name"),
                         };
                         let current_op_state = state.get_value(&current_op_name);
                         let current_op = model
@@ -173,11 +202,13 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
                             && current_op.clone().eval_running(&state)
                         {
                             // The operation can be started
+                            // println!("START OPERATION!");
                             current_op.clone().start_running(&state)
                         } else if current_op_state == "initial".to_spvalue()
                             && !current_op.clone().eval_running(&state)
                         {
                             // The operation should be started but is not enabled
+                            // println!("OPERATION NOT ENABLED!");
                             state.update(
                                 "runner_plan_status",
                                 format!("Waiting for {current_op_name} to be enabled.")
@@ -185,6 +216,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
                             )
                         } else if current_op.clone().can_be_completed(&state) {
                             // the operation has completed and we can take a step in the plan
+                            // println!("OPERATION CAN BE COMPLETED!");
                             let next_state = current_op.clone().complete_running(&state);
                             let next_state = next_state
                                 .update("runner_plan_current_step", next_step_in_plan.to_spvalue());
@@ -193,11 +225,13 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
                                 format!("Completed step {current_step_in_plan}.").to_spvalue(),
                             )
                         } else if current_op_state == "executing".to_spvalue() {
+                            // println!("OPERATION EXECUTING!");
                             state.update(
                                 "runner_plan_status",
                                 format!("Waiting for {current_op_name} to complete.").to_spvalue(),
                             )
                         } else {
+                            // println!("OPERATION DOING NOTHING!");
                             state.update(
                                 "runner_plan_status",
                                 format!("Doing nothing.").to_spvalue(),
@@ -208,10 +242,10 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
                         // next_state // if I need to publish the state
                     }
                 },
-                _ => old_state.clone(),
+                _ => updated_state.clone(),
             },
         },
-        SPValue::Unknown => old_state.clone(),
+        SPValue::Unknown => updated_state.clone(),
         _ => panic!("runner_plan should be Array type."),
     }
 

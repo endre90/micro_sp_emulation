@@ -26,10 +26,6 @@ name = "runner"
 path = "src/main.rs"
 
 [[bin]]
-name = "proptest"
-path = "proptest_model.rs"
-
-[[bin]]
 name = "gantry_pub_sub_emu"
 path = "src/emulators/gantry_pub_sub_emu.rs"
 
@@ -42,8 +38,12 @@ name = "robot_action_emu"
 path = "src/emulators/robot_action_emu.rs"
 
 [[bin]]
-name = "scanner_service_emu"
-path = "src/emulators/scanner_service_emu.rs"
+name = "scanner_emulator"
+path = "src/emulators/scanner_service_emulator.rs"
+
+[[bin]]
+name = "gripper_emulator"
+path = "src/emulators/gripper_service_emulator.rs"
 
 # [[bin]]
 # name = "set_state"

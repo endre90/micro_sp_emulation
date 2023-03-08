@@ -15,7 +15,7 @@ use crate::runner::ticker::extract_goal_from_state;
 // 5. Suction tool
 // 6. Localization algorithm -> Localization can just be started as soon as the items are scanned, 
 // which means that going there and picking the items depends on a runner guards that items are in the scene
-pub fn rita_model() -> (String, State, Vec<Transition>, Vec<Operation>, Vec<Resource>) {
+pub fn rita_model() -> (String, State, Vec<Transition>, Vec<Operation>, Vec<Operation>, Vec<Resource>) {
 
     // Define the variables
     // -------------------------------------------------------
@@ -126,9 +126,10 @@ pub fn rita_model() -> (String, State, Vec<Transition>, Vec<Operation>, Vec<Reso
         false.to_spvalue(),
     ));  
 
-    // Define automatic transitions (these transitions will immediatelly 
+    // Define automatic transitions and operations (these will immediatelly 
     // be executed if evaluated to be true)
-    let autos: Vec<Transition> = vec!();
+    let auto_transitions: Vec<Transition> = vec!();
+    let auto_operations: Vec<Operation> = vec!();
 
     // might need this later for autogeneration but now we hardcode everything...
     // // Define the message types
@@ -602,7 +603,8 @@ pub fn rita_model() -> (String, State, Vec<Transition>, Vec<Operation>, Vec<Reso
     (
         "asdf".to_string(),
         state.clone(),
-        autos,
+        auto_transitions,
+        auto_operations,
         operations,
         vec!()
     )
@@ -623,6 +625,7 @@ proptest! {
             new_state.clone(),
             m.2,
             m.3,
+            m.4,
             vec!()
         );
 

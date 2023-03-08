@@ -68,6 +68,7 @@ pub fn the_model() -> Model {
         "asdf",
         state.clone(),
         vec![],
+        vec!(),
         operations,
         vec![],
     )
@@ -154,7 +155,7 @@ pub async fn publisher_callback(
     emulator_state: &Arc<Mutex<State>>,
     publisher: r2r::Publisher<GantryIncoming>,
     mut timer: r2r::Timer,
-    node_id: &str,
+    _node_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let emulator_state_local = emulator_state.lock().unwrap().clone();
@@ -166,7 +167,7 @@ pub async fn publisher_callback(
         };
         match publisher.publish(&msg) {
             Ok(()) => (),
-            Err(e) => (),
+            Err(_) => (),
         }
         timer.tick().await?;
     }
@@ -175,7 +176,7 @@ pub async fn publisher_callback(
 pub async fn update_state(
     emulator_state: &Arc<Mutex<State>>,
     mut timer: r2r::Timer,
-    node_id: &str,
+    _node_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // ) -> HashMap<String, SPValue> {
     let model = the_model();

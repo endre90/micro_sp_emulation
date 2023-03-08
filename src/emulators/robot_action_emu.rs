@@ -1,11 +1,7 @@
 use futures::{Stream, StreamExt};
-use micro_sp::SPValue;
 use r2r::micro_sp_emulation_msgs::action::URCommand;
 
-use micro_sp::*;
-use r2r::QosProfile;
 use std::error::Error;
-use std::sync::{Arc, Mutex};
 
 pub static NODE_ID: &'static str = "robot_action_emu";
 // pub static PUBLISHER_RATE: u64 = 1000;

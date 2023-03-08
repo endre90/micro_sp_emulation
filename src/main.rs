@@ -1,13 +1,13 @@
 use micro_sp::Model;
-use micro_sp::ToSPValue;
-use micro_sp::bfs_operation_planner;
-use r2r::QosProfile;
-use r2r::micro_sp_emulation_msgs::msg::GantryIncoming;
-use r2r::micro_sp_emulation_msgs::msg::GantryOutgoing;
-use r2r::micro_sp_emulation_msgs::msg::GripperIncoming;
-use r2r::micro_sp_emulation_msgs::msg::GripperOutgoing;
+// use micro_sp::ToSPValue;
+// use micro_sp::bfs_operation_planner;
+// use r2r::QosProfile;
+// use r2r::micro_sp_emulation_msgs::msg::GantryIncoming;
+// use r2r::micro_sp_emulation_msgs::msg::GantryOutgoing;
+// use r2r::micro_sp_emulation_msgs::msg::GripperIncoming;
+// use r2r::micro_sp_emulation_msgs::msg::GripperOutgoing;
 use r2r::micro_sp_emulation_msgs::srv::TriggerScan;
-use r2r::micro_sp_emulation_msgs::action::URCommand;
+// use r2r::micro_sp_emulation_msgs::action::URCommand;
 use std::sync::{Arc, Mutex};
 
 pub static NODE_ID: &'static str = "micro_sp_runner";
@@ -16,15 +16,15 @@ pub static PUBLISHER_RATE: u64 = 100;
 
 mod runner;
 // use runner::dummy_pub_sub_model::*;
-use runner::gantry_pub_sub_ticker::*;
-use runner::gripper_pub_sub_ticker::*;
-use runner::robot_action_ticker::*;
+// use runner::gantry_pub_sub_ticker::*;
+// use runner::gripper_pub_sub_ticker::*;
+// use runner::robot_action_ticker::*;
 use runner::scanner_client_ticker::*;
 use runner::ticker::*;
-use runner::rita_model::*;
+// use runner::rita_model::*;
 use runner::scanner_model::*;
 
-use proptest::{bool, prelude::*};
+// use proptest::{bool, prelude::*};
 
 mod tests;
 
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // test
     let m = scanner_model();
-    let model = Model::new(&m.0, m.1, m.2, m.3, m.4);
+    let model = Model::new(&m.0, m.1, m.2, m.3, m.4, m.5);
     // let plan = bfs_operation_planner(model.state.clone(), extract_goal_from_state(&model.state.clone()), model.operations.clone(), 50);
     // for p in plan.plan {
     //     println!("{}", p);

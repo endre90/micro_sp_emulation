@@ -1,13 +1,9 @@
 use futures::{Stream, StreamExt};
-use micro_sp::SPValue;
 use r2r::micro_sp_emulation_msgs::srv::TriggerScan;
-
-use micro_sp::*;
-use r2r::{QosProfile, ServiceRequest};
+use r2r::ServiceRequest;
 use std::error::Error;
-use std::sync::{Arc, Mutex};
 
-pub static NODE_ID: &'static str = "scanner_service_emu";
+pub static NODE_ID: &'static str = "scanner_emulator";
 // pub static PUBLISHER_RATE: u64 = 1000;
 // pub static STATE_UPDATE_RATE: u64 = 1000;
 
@@ -45,15 +41,16 @@ pub async fn scanner_server(
     loop {
         match service.next().await {
             Some(request) => {
-                println!("Got request: {:?}", request.message);
-
+                r2r::log_info!(NODE_ID, "Got request to scan.");
+                r2r::log_debug!(NODE_ID, "Got request to scan: {:?}", request.message);
+            
                 // Adversary: 50/50 that we succeed or abort
                 if rand::random::<bool>() {
                     let response = TriggerScan::Response {
                         success: true,
-                        info: "just succeeding...".to_string(),
+                        info: "Scanning succeeded.".to_string(),
                     };
-                    println!("just succeeding...");
+                    r2r::log_warn!(NODE_ID, "Scanning succeeded.");
                     request
                         .respond(response)
                         .expect("Could not send service response.");
@@ -61,9 +58,9 @@ pub async fn scanner_server(
                 } else {
                     let response = TriggerScan::Response {
                         success: false,
-                        info: "just failing...".to_string(),
+                        info: "Scanning failed.".to_string(),
                     };
-                    println!("just failing...");
+                    r2r::log_error!(NODE_ID, "Scanning failed.");
                     request
                         .respond(response)
                         .expect("Could not send service response.");

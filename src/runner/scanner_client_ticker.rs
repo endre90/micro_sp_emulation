@@ -1,26 +1,8 @@
-use futures::{Future, Stream, StreamExt};
+use futures::Future;
 use micro_sp::SPValue;
 use micro_sp::*;
 use r2r::{micro_sp_emulation_msgs::srv::TriggerScan, Error};
 use std::sync::{Arc, Mutex};
-
-// pub async fn update_shared_state(
-//     // var: &str,
-//     // val: SPValue,
-//     // updates: Vec<(&str, SPValue)>,
-//     update: (&str, SPValue),
-//     shared_state: &Arc<Mutex<State>>,
-// ) -> State {
-//     let shared_state_local = shared_state.lock().unwrap().clone();
-//     // let mut updated_state = State::new();
-//     let updated_state = shared_state_local.update(update.0, update.1.to_owned());
-//     // updates
-//     //     .iter()
-//     //     .for_each(|(var, val)| updated_state = shared_state_local.update(var, val.to_owned()));
-//     // let updated_state = shared_state_local.update(var, val);
-//     *shared_state.lock().unwrap() = updated_state.clone();
-//     updated_state
-// }
 
 pub async fn scanner_client_ticker(
     scanner_client: &r2r::Client<TriggerScan::Service>,
@@ -32,22 +14,28 @@ pub async fn scanner_client_ticker(
     r2r::log_warn!(node_id, "Waiting for the scanner server...");
     wait_for_server.await?;
     r2r::log_warn!(node_id, "Scanner server available.");
+
+    let shared_state_local = shared_state.lock().unwrap().clone();
+    *shared_state.lock().unwrap() = shared_state_local;
+
     loop {
         let shared_state_local = shared_state.lock().unwrap().clone();
-        let scanner_trigger = match shared_state_local.get_value("scanner_trigger") {
+        let scanner_request_trigger = match shared_state_local.get_value("scanner_request_trigger") {
             SPValue::Bool(value) => value,
             _ => false,
         };
         let scanner_state = match shared_state_local.get_value("scanner_state") {
             SPValue::String(value) => value,
-            _ => "initial".to_string(),
+            _ => "unknown".to_string(),
         };
-        if scanner_trigger {
+        if scanner_request_trigger {
+            // let shared_state_local =
+            //     shared_state_local.update("scanner_request_trigger", false.to_spvalue());
+            // *shared_state.lock().unwrap() = shared_state_local;
             if scanner_state == "initial".to_string() {
-                // update_shared_state(("scanner_trigger", false.to_spvalue()), shared_state).await;
                 let request = TriggerScan::Request {
-                    point_cloud_path: "some_path".to_string(),
-                    parameters: "some_parameters".to_string(),
+                    point_cloud_path: "/path/to/file".to_string(),
+                    parameters: "parameters".to_string(),
                 };
 
                 // maybe an adversary could fail this at 50/50 as well?
@@ -59,37 +47,33 @@ pub async fn scanner_client_ticker(
 
                 match response.success {
                     true => {
-                        // update_shared_state(("scanner_state", "succeeded".to_spvalue()), shared_state).await;
-                        // update_shared_state(("scanner_trigger", false.to_spvalue()), shared_state).await;
-                        // r2r::log_info!(node_id, "Scanner service state: succeeded.");
                         let shared_state_local =
                             shared_state_local.update("scanner_state", "succeeded".to_spvalue());
-                        // let shared_state_local =
-                        //     shared_state_local.update("scanner_trigger", false.to_spvalue());
                         *shared_state.lock().unwrap() = shared_state_local;
-                        // *shared_state.lock().unwrap() = shared_state_local;
                     }
                     false => {
-                        // r2r::log_info!(node_id, "Scanner service state: failed.");
                         let shared_state_local =
                             shared_state_local.update("scanner_state", "failed".to_spvalue());
-                        // let shared_state_local =
-                        //     shared_state_local.update("scanner_trigger", false.to_spvalue());
+                        let scanner_fail_counter =
+                            match shared_state_local.get_value("scanner_fail_counter") {
+                                SPValue::Int32(value) => value,
+                                _ => 0,
+                            };
+                        let shared_state_local = shared_state_local.update(
+                            "scanner_fail_counter",
+                            (scanner_fail_counter + 1).to_spvalue(),
+                        );
                         *shared_state.lock().unwrap() = shared_state_local;
-                        // update_shared_state(("scanner_trigger", false.to_spvalue()), shared_state).await;
-                        // let shared_state_local =
-                        //     shared_state_local.update("scanner_state", "failed".to_spvalue());
-                        // *shared_state.lock().unwrap() = shared_state_local;
                     }
                 }
             }
-        } else {
-            // update_shared_state(("scanner_trigger", false.to_spvalue()), shared_state).await;
-            // r2r::log_info!(node_id, "Scanner service state: initial.");
-            let shared_state_local =
-                shared_state_local.update("scanner_state", "initial".to_spvalue());
-            *shared_state.lock().unwrap() = shared_state_local;
         }
+        // this was unneccesary all along...
+        // } else {
+        //     let shared_state_local =
+        //         shared_state_local.update("scanner_state", "initial".to_spvalue());
+        //     *shared_state.lock().unwrap() = shared_state_local;
+        // }
 
         timer.tick().await?;
     }
