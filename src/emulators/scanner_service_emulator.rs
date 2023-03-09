@@ -43,6 +43,9 @@ pub async fn scanner_server(
             Some(request) => {
                 r2r::log_info!(NODE_ID, "Got request to scan.");
                 r2r::log_debug!(NODE_ID, "Got request to scan: {:?}", request.message);
+
+                // simulate task execution time
+                tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
             
                 // Adversary: 50/50 that we succeed or abort
                 if rand::random::<bool>() {

@@ -38,12 +38,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 pub async fn gripper_server(
     mut service: impl Stream<Item = ServiceRequest<TriggerGripper::Service>> + Unpin,
 ) -> Result<(), Box<dyn std::error::Error>> {
+
+
     loop {
         match service.next().await {
             Some(request) => {
                 match request.message.command.as_str() {
                     "open" => {
-                        r2r::log_info!(NODE_ID, "Got request to open the gripper.");
+                        r2r::log_info!(NODE_ID, "Got request to open.");
                         // Adversary: 50/50 that we succeed or abort
                         if rand::random::<bool>() {
                             let response = TriggerGripper::Response {
@@ -69,8 +71,10 @@ pub async fn gripper_server(
                             continue;
                         }
                     }
+
+
                     "close" => {
-                        r2r::log_info!(NODE_ID, "Got request to close the gripper.");
+                        r2r::log_info!(NODE_ID, "Got request to close.");
                         // Adversary: 50/50 that we succeed or abort
                         let response = if rand::random::<bool>() {
                             // Adversary: 50/50 that we grip or close completely (i.e. fail gripping)
@@ -90,7 +94,7 @@ pub async fn gripper_server(
                                 }
                             }
                         } else {
-                            r2r::log_error!(NODE_ID, "Scanning failed.");
+                            r2r::log_error!(NODE_ID, "Closing failed.");
                             TriggerGripper::Response {
                                 state: "unknown".to_string(),
                                 success: false,

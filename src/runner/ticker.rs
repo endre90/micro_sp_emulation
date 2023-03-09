@@ -198,6 +198,10 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &Arc<Mutex<
 
                         let next_step_in_plan = current_step_in_plan + 1;
 
+                        // deadline stuff
+                        // let now = Instant::now();
+                        // now.elapsed() < Duration::from_secs(timeout)
+
                         if current_op_state == "initial".to_spvalue()
                             && current_op.clone().eval_running(&state)
                         {

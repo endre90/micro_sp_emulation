@@ -7,6 +7,7 @@ use micro_sp::Model;
 // use r2r::micro_sp_emulation_msgs::msg::GripperIncoming;
 // use r2r::micro_sp_emulation_msgs::msg::GripperOutgoing;
 use r2r::micro_sp_emulation_msgs::srv::TriggerScan;
+use r2r::micro_sp_emulation_msgs::srv::TriggerGripper;
 // use r2r::micro_sp_emulation_msgs::action::URCommand;
 use std::sync::{Arc, Mutex};
 
@@ -20,9 +21,10 @@ mod runner;
 // use runner::gripper_pub_sub_ticker::*;
 // use runner::robot_action_ticker::*;
 use runner::scanner_client_ticker::*;
+use runner::gripper_client_ticker::*;
 use runner::ticker::*;
 // use runner::rita_model::*;
-use runner::scanner_model::*;
+use runner::scan_grip_rob_model::*;
 
 // use proptest::{bool, prelude::*};
 
@@ -55,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // )?;
 
     // test
-    let m = scanner_model();
+    let m = scan_grip_rob_model();
     let model = Model::new(&m.0, m.1, m.2, m.3, m.4, m.5);
     // let plan = bfs_operation_planner(model.state.clone(), extract_goal_from_state(&model.state.clone()), model.operations.clone(), 50);
     // for p in plan.plan {
@@ -68,10 +70,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let waiting_for_robot_action_server = node.is_available(&robot_action_client)?;
 
     let scanner_client = node.create_client::<TriggerScan::Service>("scanner_service")?;
+    let gripper_client = node.create_client::<TriggerGripper::Service>("gripper_service")?;
 
     
 
     let waiting_for_scanner_server = node.is_available(&scanner_client)?;
+    let waiting_for_gripper_server = node.is_available(&gripper_client)?;
 
 
     
@@ -89,6 +93,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let shared_state_clone = shared_state.clone();
     let scanner_timer =
         node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
+    let gripper_timer =
+        node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
 
         let handle = std::thread::spawn(move || loop {
             node.spin_once(std::time::Duration::from_millis(100));
@@ -96,6 +102,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::task::spawn(async move {
         match scanner_client_ticker(&scanner_client, waiting_for_scanner_server, &shared_state_clone, scanner_timer, NODE_ID).await {
+            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
+        };
+    });
+
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        match gripper_client_ticker(&gripper_client, waiting_for_gripper_server, &shared_state_clone, gripper_timer, NODE_ID).await {
             Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
             Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
         };
