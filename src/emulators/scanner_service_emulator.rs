@@ -4,8 +4,6 @@ use r2r::ServiceRequest;
 use std::error::Error;
 
 pub static NODE_ID: &'static str = "scanner_emulator";
-// pub static PUBLISHER_RATE: u64 = 1000;
-// pub static STATE_UPDATE_RATE: u64 = 1000;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -45,7 +43,7 @@ pub async fn scanner_server(
                 r2r::log_debug!(NODE_ID, "Got request to scan: {:?}", request.message);
 
                 // simulate task execution time
-                tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+                // tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
             
                 // Adversary: 50/50 that we succeed or abort
                 if rand::random::<bool>() {

@@ -15,66 +15,45 @@ pub async fn scanner_client_ticker(
     wait_for_server.await?;
     r2r::log_warn!(node_id, "Scanner server available.");
 
-    let shared_state_local = shared_state.lock().unwrap().clone();
-    *shared_state.lock().unwrap() = shared_state_local;
-
     loop {
-        let shared_state_local = shared_state.lock().unwrap().clone();
-        let scanner_request_trigger = match shared_state_local.get_value("scanner_request_trigger") {
+        let shsl = shared_state.lock().unwrap().clone();
+        let scanner_request_trigger = match shsl.get_value("scanner_request_trigger") {
             SPValue::Bool(value) => value,
             _ => false,
         };
-        let scanner_state = match shared_state_local.get_value("scanner_state") {
+        let scanner_request_state = match shsl.get_value("scanner_request_state") {
             SPValue::String(value) => value,
             _ => "unknown".to_string(),
         };
         if scanner_request_trigger {
-            // let shared_state_local =
-            //     shared_state_local.update("scanner_request_trigger", false.to_spvalue());
-            // *shared_state.lock().unwrap() = shared_state_local;
-            if scanner_state == "initial".to_string() {
+            if scanner_request_state == "initial".to_string() {
                 let request = TriggerScan::Request {
                     point_cloud_path: "/path/to/file".to_string(),
                     parameters: "parameters".to_string(),
                 };
 
-                // maybe an adversary could fail this at 50/50 as well?
                 let response = scanner_client
                     .request(&request)
                     .expect("Could not send scan request.")
                     .await
                     .expect("Cancelled.");
 
-                match response.success {
-                    true => {
-                        let shared_state_local =
-                            shared_state_local.update("scanner_state", "succeeded".to_spvalue());
-                        *shared_state.lock().unwrap() = shared_state_local;
-                    }
+                *shared_state.lock().unwrap() = match response.success {
+                    true => shsl.update("scanner_request_state", "succeeded".to_spvalue()),
                     false => {
-                        let shared_state_local =
-                            shared_state_local.update("scanner_state", "failed".to_spvalue());
-                        let scanner_fail_counter =
-                            match shared_state_local.get_value("scanner_fail_counter") {
-                                SPValue::Int32(value) => value,
-                                _ => 0,
-                            };
-                        let shared_state_local = shared_state_local.update(
-                            "scanner_fail_counter",
-                            (scanner_fail_counter + 1).to_spvalue(),
-                        );
-                        *shared_state.lock().unwrap() = shared_state_local;
+                        let fail_counter_scanner = match shsl.get_value("fail_counter_scanner") {
+                            SPValue::Int32(value) => value,
+                            _ => 0,
+                        };
+                        shsl.update("scanner_request_state", "failed".to_spvalue())
+                            .update(
+                                "fail_counter_scanner",
+                                (fail_counter_scanner + 1).to_spvalue(),
+                            )
                     }
                 }
             }
         }
-        // this was unneccesary all along...
-        // } else {
-        //     let shared_state_local =
-        //         shared_state_local.update("scanner_state", "initial".to_spvalue());
-        //     *shared_state.lock().unwrap() = shared_state_local;
-        // }
-
         timer.tick().await?;
     }
 }

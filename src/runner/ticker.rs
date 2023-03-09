@@ -1,6 +1,9 @@
 use micro_sp::*;
-use tokio::time::{Instant, Duration};
+use ordered_float::OrderedFloat;
 use std::sync::{Arc, Mutex};
+// use std::time::{Duration, Instant, SystemTime};
+
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn extract_goal_from_state(state: &State) -> Predicate {
     match state.state.get("runner_goal") {
@@ -40,6 +43,10 @@ pub async fn ticker(
         let shsl = shared_state.lock().unwrap().clone();
         let replan = shsl.get_value("runner_replan");
         let replanned = shsl.get_value("runner_replanned");
+        let replan_counter = match shsl.get_value("runner_replan_counter") {
+            SPValue::Int32(value) => value,
+            _ => 0,
+        };
 
         let new_state = match (replan, replanned) {
             (SPValue::Bool(true), SPValue::Bool(true)) => shsl
@@ -47,7 +54,9 @@ pub async fn ticker(
                 .update("runner_replanned", false.to_spvalue()),
             (SPValue::Bool(true), SPValue::Bool(false)) => {
                 let goal = extract_goal_from_state(&shsl);
-                let new_state = shsl.update("runner_replanned", true.to_spvalue());
+                let new_state = shsl
+                    .update("runner_replanned", true.to_spvalue())
+                    .update("runner_replan_counter", (replan_counter + 1).to_spvalue());
                 let new_state = reset_all_operations(&new_state);
                 r2r::log_warn!(node_id, "Re-plan triggered in the following state:");
                 println!("{}", new_state);
@@ -97,7 +106,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
             shsl = t.clone().take_running(&shsl);
         }
     }
-    
+
     match shsl.get_value("runner_plan") {
         SPValue::Array(_, plan) => match plan.is_empty() {
             true => shsl
@@ -134,7 +143,16 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                         if current_op_state == "initial".to_spvalue() {
                             if current_op.clone().eval_running(&shsl) {
                                 // The operation can be started
-                                // let now = Instant::now();
+
+                                let start = SystemTime::now();
+                                let since_the_epoch = start
+                                    .duration_since(UNIX_EPOCH)
+                                    .expect("Time went backwards")
+                                    .as_secs_f64();
+                                let shsl = shsl.update(
+                                    &format!("timestamp_{}", current_op_name),
+                                    since_the_epoch.to_spvalue(),
+                                );
                                 current_op.clone().start_running(&shsl)
                             } else {
                                 // The operation can be started but is not enabled
@@ -148,26 +166,56 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                             if current_op.clone().can_be_completed(&shsl) {
                                 // complete the operation and take a step in the plan
                                 let shsl = current_op.clone().complete_running(&shsl);
-                                shsl.update("runner_plan_current_step", next_step_in_plan.to_spvalue())
+                                shsl.update(
+                                    "runner_plan_current_step",
+                                    next_step_in_plan.to_spvalue(),
+                                )
                                 .update(
                                     "runner_plan_status",
                                     format!("Completed step {curr_step}.").to_spvalue(),
                                 )
                             } else {
                                 // the operation is still executing, check if operation timeout is exceeded
-                                // if now.elapsed() < Duration::from_secs(5) {
-                                    // r2r::log_error!(node_id, "Operation timeout reached, operation is reset.");
-                                    // reset_all_operations(&shsl) // also reset the values
-                                    // shsl.update(
-                                    //     "runner_plan_status",
-                                    //     format!("Waiting for {current_op_name} to complete.").to_spvalue(),
-                                    // )
-                                // } else {
+                                let timestamp_current_op = match shsl
+                                    .get_value(&format!("timestamp_{}", current_op_name))
+                                {
+                                    SPValue::Float64(OrderedFloat(timestamp)) => timestamp,
+                                    _ => 0.0,
+                                };
+                                let deadline_current_op = match shsl
+                                    .get_value(&format!("deadline_{}", current_op_name))
+                                {
+                                    SPValue::Float64(OrderedFloat(deadline)) => deadline,
+                                    _ => 0.0,
+                                };
+                                let start = SystemTime::now();
+                                let since_the_epoch = start
+                                    .duration_since(UNIX_EPOCH)
+                                    .expect("Time went backwards")
+                                    .as_secs_f64();
+                                if (since_the_epoch - timestamp_current_op) > deadline_current_op {
+                                    let nr_timeouts = match shsl
+                                        .get_value(&format!("timeouts_{}", current_op_name))
+                                    {
+                                        SPValue::Int32(nr_timeouts) => nr_timeouts,
+                                        _ => 0,
+                                    };
                                     shsl.update(
                                         "runner_plan_status",
-                                        format!("Waiting for {current_op_name} to complete.").to_spvalue(),
+                                        format!("Operation {current_op_name} timed out.")
+                                            .to_spvalue(),
                                     )
-                                // }
+                                    .update(
+                                        &format!("timeouts_{}", current_op_name),
+                                        (nr_timeouts + 1).to_spvalue(),
+                                    )
+                                } else {
+                                    shsl.update(
+                                        "runner_plan_status",
+                                        format!("Waiting for {current_op_name} to complete.")
+                                            .to_spvalue(),
+                                    )
+                                }
                             }
                         } else {
                             // this shouldn't really happen
