@@ -5,7 +5,6 @@ pub fn scanner_model() -> (
     State,
     Vec<Transition>,
     Vec<Operation>,
-    Vec<Operation>,
     Vec<Resource>,
 ) {
     // Define the variables
@@ -63,7 +62,6 @@ pub fn scanner_model() -> (
     // Define automatic transitions (these transitions will immediatelly
     // be executed if evaluated to be true)
     let mut auto_transitions: Vec<Transition> = vec![];
-    let auto_operations: Vec<Operation> = vec![];
 
     auto_transitions.push(t!(
         // name
@@ -131,7 +129,6 @@ pub fn scanner_model() -> (
         "scanner_model".to_string(),
         state.clone(),
         auto_transitions,
-        auto_operations,
         operations,
         vec![],
     )
@@ -141,7 +138,7 @@ pub fn scanner_model() -> (
 fn test_scanning_operation() {
     let m = scanner_model();
 
-    let model = Model::new(&m.0, m.1, m.2, m.3, m.4, vec![]);
+    let model = Model::new(&m.0, m.1, m.2, m.3, vec![]);
 
     let plan = bfs_operation_planner(
         model.state.clone(),

@@ -105,7 +105,6 @@ pub fn the_model() -> Model {
         "asdf",
         state.clone(),
         vec![],
-        vec!(),
         operations,
         vec![],
     )

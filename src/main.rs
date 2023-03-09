@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // test
     let m = scan_grip_rob_model();
-    let model = Model::new(&m.0, m.1, m.2, m.3, m.4, m.5);
+    let model = Model::new(&m.0, m.1, m.2, m.3, m.4);
     // let plan = bfs_operation_planner(model.state.clone(), extract_goal_from_state(&model.state.clone()), model.operations.clone(), 50);
     // for p in plan.plan {
     //     println!("{}", p);

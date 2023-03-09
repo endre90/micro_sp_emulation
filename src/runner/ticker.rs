@@ -1,4 +1,5 @@
 use micro_sp::*;
+use tokio::time::{Instant, Duration};
 use std::sync::{Arc, Mutex};
 
 pub fn extract_goal_from_state(state: &State) -> Predicate {
@@ -96,7 +97,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
             shsl = t.clone().take_running(&shsl);
         }
     }
-
+    
     match shsl.get_value("runner_plan") {
         SPValue::Array(_, plan) => match plan.is_empty() {
             true => shsl
@@ -133,6 +134,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                         if current_op_state == "initial".to_spvalue() {
                             if current_op.clone().eval_running(&shsl) {
                                 // The operation can be started
+                                // let now = Instant::now();
                                 current_op.clone().start_running(&shsl)
                             } else {
                                 // The operation can be started but is not enabled
@@ -152,11 +154,20 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                     format!("Completed step {curr_step}.").to_spvalue(),
                                 )
                             } else {
-                                // the operation is still executing
-                                shsl.update(
-                                    "runner_plan_status",
-                                    format!("Waiting for {current_op_name} to complete.").to_spvalue(),
-                                )
+                                // the operation is still executing, check if operation timeout is exceeded
+                                // if now.elapsed() < Duration::from_secs(5) {
+                                    // r2r::log_error!(node_id, "Operation timeout reached, operation is reset.");
+                                    // reset_all_operations(&shsl) // also reset the values
+                                    // shsl.update(
+                                    //     "runner_plan_status",
+                                    //     format!("Waiting for {current_op_name} to complete.").to_spvalue(),
+                                    // )
+                                // } else {
+                                    shsl.update(
+                                        "runner_plan_status",
+                                        format!("Waiting for {current_op_name} to complete.").to_spvalue(),
+                                    )
+                                // }
                             }
                         } else {
                             // this shouldn't really happen
@@ -165,10 +176,6 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                 format!("Doing nothing.").to_spvalue(),
                             )
                         }
-
-                        // deadline stuff
-                        // let now = Instant::now();
-                        // now.elapsed() < Duration::from_secs(timeout)
                     }
                 },
                 _ => shsl.clone(),

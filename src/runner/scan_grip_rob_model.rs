@@ -5,7 +5,6 @@ pub fn scan_grip_rob_model() -> (
     State,
     Vec<Transition>,
     Vec<Operation>,
-    Vec<Operation>,
     Vec<Resource>,
 ) {
     // Define the variables
@@ -83,7 +82,6 @@ pub fn scan_grip_rob_model() -> (
     // Define automatic transitions (these transitions will immediatelly
     // be executed if evaluated to be true)
     let mut auto_transitions: Vec<Transition> = vec![];
-    let auto_operations: Vec<Operation> = vec![];
 
     auto_transitions.push(t!(
         // name
@@ -154,6 +152,8 @@ pub fn scan_grip_rob_model() -> (
     let mut operations = vec![];
 
     // Scanner operation
+    let op_scan_box_a = v_runner!("op_scan_box_a");
+    let state = state.add(assign!(op_scan_box_a, "initial".to_spvalue()));
     operations.push(Operation::new(
         &format!("op_scan_box_a"),
         // precondition
@@ -192,6 +192,8 @@ pub fn scan_grip_rob_model() -> (
     ));
 
     // Open gripper operation - should fail if it can't open
+    let op_open_gripper = v_runner!("op_open_gripper");
+    let state = state.add(assign!(op_open_gripper, "initial".to_spvalue()));
     operations.push(Operation::new(
         &format!("op_open_gripper"),
         // precondition
@@ -230,6 +232,8 @@ pub fn scan_grip_rob_model() -> (
     ));
 
     // Close gripper operation - should fail if it can't completely close, which also means gripping
+    let op_close_gripper = v_runner!("op_close_gripper");
+    let state = state.add(assign!(op_close_gripper, "initial".to_spvalue()));
     operations.push(Operation::new(
         &format!("op_close_gripper"),
         // precondition
@@ -272,7 +276,6 @@ pub fn scan_grip_rob_model() -> (
         "scanner_model".to_string(),
         state.clone(),
         auto_transitions,
-        auto_operations,
         operations,
         vec![],
     )
@@ -282,7 +285,7 @@ pub fn scan_grip_rob_model() -> (
 fn test_operations() {
     let m = scan_grip_rob_model();
 
-    let model = Model::new(&m.0, m.1, m.2, m.3, m.4, vec![]);
+    let model = Model::new(&m.0, m.1, m.2, m.3, vec![]);
 
     let plan = bfs_operation_planner(
         model.state.clone(),
