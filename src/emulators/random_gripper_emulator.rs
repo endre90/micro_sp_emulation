@@ -2,10 +2,9 @@ use futures::{Stream, StreamExt};
 use r2r::micro_sp_emulation_msgs::srv::TriggerGripper;
 use r2r::ServiceRequest;
 use std::error::Error;
+use rand::Rng;
 
 pub static NODE_ID: &'static str = "gripper_emulator";
-// pub static PUBLISHER_RATE: u64 = 1000;
-// pub static STATE_UPDATE_RATE: u64 = 1000;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -43,6 +42,15 @@ pub async fn gripper_server(
     loop {
         match service.next().await {
             Some(request) => {
+
+                let delay: u64 = {
+                    let mut rng = rand::thread_rng();
+                    rng.gen_range(0..6000)
+                };
+
+                // simulate random task execution time
+                tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+
                 match request.message.command.as_str() {
                     "open" => {
                         r2r::log_info!(NODE_ID, "Got request to open.");

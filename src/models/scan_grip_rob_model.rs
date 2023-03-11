@@ -88,7 +88,7 @@ pub fn scan_grip_rob_model() -> (
     let timeouts_op_scan_box_a = iv_runner!("timeouts_op_scan_box_a");
     let state = state.add(assign!(op_scan_box_a, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_scan_box_a, 0.0.to_spvalue()));
-    let state = state.add(assign!(deadline_op_scan_box_a, 5.0.to_spvalue()));
+    let state = state.add(assign!(deadline_op_scan_box_a, 2.0.to_spvalue()));
     let state = state.add(assign!(timeouts_op_scan_box_a, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_scan_box_a"),
@@ -134,7 +134,7 @@ pub fn scan_grip_rob_model() -> (
     let timeouts_op_open_gripper = iv_runner!("timeouts_op_open_gripper");
     let state = state.add(assign!(op_open_gripper, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_open_gripper, 0.0.to_spvalue()));
-    let state = state.add(assign!(deadline_op_open_gripper, 5.0.to_spvalue()));
+    let state = state.add(assign!(deadline_op_open_gripper, 1.0.to_spvalue()));
     let state = state.add(assign!(timeouts_op_open_gripper, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_open_gripper"),
@@ -180,7 +180,7 @@ pub fn scan_grip_rob_model() -> (
     let timeouts_op_close_gripper = iv_runner!("timeouts_op_close_gripper");
     let state = state.add(assign!(op_close_gripper, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_close_gripper, 0.0.to_spvalue()));
-    let state = state.add(assign!(deadline_op_close_gripper, 5.0.to_spvalue()));
+    let state = state.add(assign!(deadline_op_close_gripper, 1.0.to_spvalue()));
     let state = state.add(assign!(timeouts_op_close_gripper, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_close_gripper"),

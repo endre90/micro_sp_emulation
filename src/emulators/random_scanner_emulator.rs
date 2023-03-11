@@ -2,6 +2,7 @@ use futures::{Stream, StreamExt};
 use r2r::micro_sp_emulation_msgs::srv::TriggerScan;
 use r2r::ServiceRequest;
 use std::error::Error;
+use rand::Rng;
 
 pub static NODE_ID: &'static str = "scanner_emulator";
 
@@ -42,8 +43,13 @@ pub async fn scanner_server(
                 r2r::log_info!(NODE_ID, "Got request to scan.");
                 r2r::log_debug!(NODE_ID, "Got request to scan: {:?}", request.message);
 
-                // simulate task execution time
-                // tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
+                let delay: u64 = {
+                    let mut rng = rand::thread_rng();
+                    rng.gen_range(0..6000)
+                };
+                
+                // simulate random task execution time
+                tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
             
                 // Adversary: 50/50 that we succeed or abort
                 if rand::random::<bool>() {

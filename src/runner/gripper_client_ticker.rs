@@ -4,6 +4,9 @@ use micro_sp::*;
 use r2r::{micro_sp_emulation_msgs::srv::TriggerGripper, Error};
 use std::sync::{Arc, Mutex};
 
+
+
+
 pub async fn gripper_client_ticker(
     gripper_cient: &r2r::Client<TriggerGripper::Service>,
     wait_for_server: impl Future<Output = Result<(), Error>>,

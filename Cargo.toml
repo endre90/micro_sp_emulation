@@ -15,7 +15,6 @@ micro_sp = {git = "https://github.com/endre90/micro_sp", branch = "master"}
 serde_json = "1.0.91"
 proptest = "1.1.0"
 rand = "0.8.5"
-# stateright = "0.29.0"
 
 [build-dependencies]
 quote = "1.0.23"
@@ -26,25 +25,9 @@ name = "runner"
 path = "src/main.rs"
 
 [[bin]]
-name = "gantry_pub_sub_emu"
-path = "src/emulators/gantry_pub_sub_emu.rs"
+name = "random_scanner_emulator"
+path = "src/emulators/random_scanner_emulator.rs"
 
 [[bin]]
-name = "gripper_pub_sub_emu"
-path = "src/emulators/gripper_pub_sub_emu.rs"
-
-[[bin]]
-name = "robot_action_emu"
-path = "src/emulators/robot_action_emu.rs"
-
-[[bin]]
-name = "scanner_emulator"
-path = "src/emulators/scanner_service_emulator.rs"
-
-[[bin]]
-name = "gripper_emulator"
-path = "src/emulators/gripper_service_emulator.rs"
-
-# [[bin]]
-# name = "set_state"
-# path = "src/set_state.rs"
+name = "random_gripper_emulator"
+path = "src/emulators/random_gripper_emulator.rs"
