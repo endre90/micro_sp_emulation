@@ -5,7 +5,6 @@ use r2r::micro_sp_emulation_msgs::srv::SetState;
 use r2r::ServiceRequest;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
 
 pub async fn set_state_server(
     mut service: impl Stream<Item = ServiceRequest<SetState::Service>> + Unpin,
@@ -26,7 +25,7 @@ pub async fn set_state_server(
                     let mut value = v.clone();
                     let to_update_prim = value.split_off(7);
                     let to_update = match value.as_str() {
-                        // "array__" => to_update_prim.to_spvalue(),
+                        "array__" => to_update_prim.to_spvalue(),
                         "bool___" => to_update_prim.parse::<bool>().unwrap_or_default().to_spvalue(),
                         "float__" => to_update_prim.parse::<OrderedFloat<f64>>().unwrap_or_default().to_spvalue(),
                         "string_" => to_update_prim.to_spvalue(),
@@ -35,11 +34,13 @@ pub async fn set_state_server(
                         "unknown" => SPValue::Unknown,
                         _ => panic!("can't parse that... {:?}", value)
                     };
-                    println!("{} ==== {} ==== {} ==== {}", k, value, to_update, to_update.has_type());
                     shsl = shsl.update(&k, to_update)
                 });
 
                 *shared_state.lock().unwrap() = shsl;
+
+                // Here I have to wait until the test is completed, i.e. 
+                // runner_plan_state is one of done, failed or aborted
 
                 let response = SetState::Response {
                     success: true,

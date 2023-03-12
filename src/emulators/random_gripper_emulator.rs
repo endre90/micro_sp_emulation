@@ -49,7 +49,7 @@ pub async fn gripper_server(
                 };
 
                 // simulate random task execution time
-                tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+                // tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
 
                 match request.message.command.as_str() {
                     "open" => {

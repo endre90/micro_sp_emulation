@@ -55,8 +55,12 @@ pub fn scan_grip_rob_model() -> (
         SPValue::Unknown,
     ));
     let state = state.add(SPAssignment::new(
-        v_runner!("runner_plan_status"),
+        v_runner!("runner_plan_info"),
         SPValue::Unknown,
+    ));
+    let state = state.add(SPAssignment::new(
+        v_runner!("runner_plan_state"),
+        "empty".to_spvalue(),
     ));
     let state = state.add(SPAssignment::new(
         iv_runner!("runner_plan_current_step"),
@@ -92,7 +96,7 @@ pub fn scan_grip_rob_model() -> (
     let waiting_to_complete_op_scan_box_a = iv_runner!("waiting_to_complete_op_scan_box_a");
     let state = state.add(assign!(op_scan_box_a, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_scan_box_a, 0.0.to_spvalue()));
-    let state = state.add(assign!(deadline_op_scan_box_a, 2.0.to_spvalue()));
+    let state = state.add(assign!(deadline_op_scan_box_a, 1.0.to_spvalue()));
     let state = state.add(assign!(timedout_op_scan_box_a, 0.to_spvalue()));
     let state = state.add(assign!(started_op_scan_box_a, 0.to_spvalue()));
     let state = state.add(assign!(completed_op_scan_box_a, 0.to_spvalue()));
@@ -282,7 +286,7 @@ pub fn scan_grip_rob_model() -> (
             "var:scanner_request_trigger <- false",
             "var:runner_plan <- [unknown]",
             "var:runner_plan_current_step <- [unknown]",
-            "var:runner_plan_status <- Waiting_for_the_re_plan",
+            "var:runner_plan_info <- Waiting_for_the_re_plan",
             "var:runner_replan <- true"
             // "var:runner_replan_trigger <- true"
         ),
@@ -306,7 +310,7 @@ pub fn scan_grip_rob_model() -> (
             "var:gripper_request_trigger <- false",
             "var:runner_plan <- [unknown]",
             "var:runner_plan_current_step <- [unknown]",
-            "var:runner_plan_status <- Waiting_for_the_re_plan",
+            "var:runner_plan_info <- Waiting_for_the_re_plan",
             "var:runner_replan <- true"
             // "var:runner_replan_trigger <- true"
         ),
@@ -330,8 +334,32 @@ pub fn scan_grip_rob_model() -> (
             "var:gripper_request_trigger <- false",
             "var:runner_plan <- [unknown]",
             "var:runner_plan_current_step <- [unknown]",
-            "var:runner_plan_status <- Waiting_for_the_re_plan",
+            "var:runner_plan_info <- Waiting_for_the_re_plan",
             "var:runner_replan <- true"
+            // "var:runner_replan_trigger <- true"
+        ),
+        &state
+    ));
+
+    let taken_auto_abort_planning_if_scanning_timedout_5_times = iv_runner!("taken_auto_abort_if_scanning_timedout_5_times");
+    let state = state.add(assign!(taken_auto_abort_planning_if_scanning_timedout_5_times, 0.to_spvalue()));
+    auto_transitions.push(t!(
+        // name
+        "abort_if_scanning_timedout_5_times",
+        // planner guard
+        "var:timedout_op_scan_box_a == 5 && var:runner_plan_state != aborted",
+        // ruuner guard = none
+        "true",
+        // planner actions
+        Vec::<&str>::new(),
+        // runner actions - none
+        vec!(
+            "var:runner_plan <- [unknown]",
+            "var:runner_plan_current_step <- [unknown]",
+            "var:runner_plan_info <- Aborted_due_to_timeout",
+            "var:runner_plan_state <- aborted",
+            "var:runner_replan <- false",
+            "var:runner_replanned <- false"
             // "var:runner_replan_trigger <- true"
         ),
         &state

@@ -2,6 +2,8 @@ use micro_sp::Model;
 use r2r::micro_sp_emulation_msgs::srv::SetState;
 use r2r::micro_sp_emulation_msgs::srv::TriggerGripper;
 use r2r::micro_sp_emulation_msgs::srv::TriggerScan;
+use r2r::std_msgs::msg::String;
+use r2r::QosProfile;
 use std::sync::{Arc, Mutex};
 
 pub static NODE_ID: &'static str = "micro_sp_runner";
@@ -15,6 +17,7 @@ mod runner;
 use runner::gripper_client_ticker::*;
 use runner::scanner_client_ticker::*;
 use runner::set_state_server::*;
+use runner::state_publisher::*;
 use runner::ticker::*;
 
 #[tokio::main]
@@ -29,11 +32,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let shared_state = Arc::new(Mutex::new(model.state.clone()));
 
+    let publisher_timer = node.create_wall_timer(std::time::Duration::from_millis(PUBLISHER_RATE))?;
+    let state_publisher = node.create_publisher::<String>("state", QosProfile::default())?;
+
     let set_state_service = node.create_service::<SetState::Service>("set_state")?;
 
     let scanner_client = node.create_client::<TriggerScan::Service>("scanner_service")?;
     let gripper_client = node.create_client::<TriggerGripper::Service>("gripper_service")?;
-    
+
     let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
         let result = set_state_server(set_state_service, &shared_state_clone, NODE_ID).await;
@@ -89,18 +95,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::task::spawn(async move {
         // wait for the measured values to update the state
         // tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
-        let result = ticker(
-            NODE_ID,
-            &model,
-            &shared_state_clone,
-            ticker_timer,
-        )
-        .await;
+        let result = ticker(NODE_ID, &model, &shared_state_clone, ticker_timer).await;
         match result {
             Ok(()) => r2r::log_info!(NODE_ID, "Simple Controller Service call succeeded."),
             Err(e) => r2r::log_error!(
                 NODE_ID,
                 "Simple Controller Service call failed with: {}.",
+                e
+            ),
+        };
+    });
+
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        let result = state_publisher_callback(state_publisher, publisher_timer, &shared_state_clone, NODE_ID).await;
+        match result {
+            Ok(()) => r2r::log_info!(NODE_ID, "State publisher succeeded."),
+            Err(e) => r2r::log_error!(
+                NODE_ID,
+                "State publisher failed with: {}.",
                 e
             ),
         };

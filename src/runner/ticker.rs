@@ -65,15 +65,22 @@ pub async fn ticker(
                     false => {
                         r2r::log_warn!(node_id, "No plan was found.");
                         new_state
+                            .update("runner_plan_info", "No plan found.".to_spvalue())
+                            .update("runner_plan_state", "failed".to_spvalue())
                     }
                     true => match new_plan.length == 0 {
                         true => {
                             r2r::log_warn!(node_id, "We are already in the goal.");
                             new_state
+                                .update("runner_plan_info", "Already in the goal.".to_spvalue())
+                                .update("runner_plan_state", "done".to_spvalue())
                         }
                         false => {
                             r2r::log_warn!(node_id, "A new plan was found: {:?}.", new_plan.plan);
-                            new_state.update("runner_plan", new_plan.plan.to_spvalue())
+                            new_state
+                                .update("runner_plan", new_plan.plan.to_spvalue())
+                                .update("runner_plan_info", "A new plan was found.".to_spvalue())
+                                .update("runner_plan_state", "ready".to_spvalue())
                         }
                     },
                 }
@@ -117,7 +124,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
     match shsl.get_value("runner_plan") {
         SPValue::Array(_, plan) => match plan.is_empty() {
             true => shsl
-                .update("runner_plan_status", SPValue::Unknown)
+                .update("runner_plan_info", "The plan is empty.".to_spvalue())
                 .update("runner_plan", SPValue::Unknown)
                 .update("runner_plan_current_step", SPValue::Unknown),
 
@@ -128,7 +135,8 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                     // we are done with the plan and will stop executing and we also
                     // reset the current plan so we do not tries to run the same plan again
                     true => shsl
-                        .update("runner_plan_status", "done".to_spvalue())
+                        .update("runner_plan_info", "The plan is done.".to_spvalue())
+                        .update("runner_plan_state", "done".to_spvalue())
                         .update("runner_goal", SPValue::Unknown)
                         .update("runner_plan", SPValue::Unknown)
                         .update("runner_plan_current_step", SPValue::Unknown),
@@ -174,16 +182,18 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                 current_op.clone().start_running(&shsl)
                             } else {
                                 // The operation can be started but is not enabled
-                                let waiting_to_start_current_op =
-                                    match shsl.get_value(&format!("waiting_to_start_{}", current_op_name)) {
-                                        SPValue::Int32(started) => started,
-                                        _ => 0,
-                                    };
+                                let waiting_to_start_current_op = match shsl
+                                    .get_value(&format!("waiting_to_start_{}", current_op_name))
+                                {
+                                    SPValue::Int32(started) => started,
+                                    _ => 0,
+                                };
                                 shsl.update(
-                                    "runner_plan_status",
+                                    "runner_plan_info",
                                     format!("Waiting for {current_op_name} to be enabled.")
                                         .to_spvalue(),
-                                ).update(
+                                )
+                                .update(
                                     &format!("waiting_to_start_{}", current_op_name),
                                     (waiting_to_start_current_op + 1).to_spvalue(),
                                 )
@@ -203,7 +213,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                     next_step_in_plan.to_spvalue(),
                                 )
                                 .update(
-                                    "runner_plan_status",
+                                    "runner_plan_info",
                                     format!("Completed step {curr_step}.").to_spvalue(),
                                 )
                                 .update(
@@ -237,7 +247,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                         _ => 0,
                                     };
                                     shsl.update(
-                                        "runner_plan_status",
+                                        "runner_plan_info",
                                         format!("Operation {current_op_name} timed out.")
                                             .to_spvalue(),
                                     )
@@ -250,16 +260,18 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                         (nr_timedout + 1).to_spvalue(),
                                     )
                                 } else {
-                                    let waiting_to_complete_current_op =
-                                    match shsl.get_value(&format!("waiting_to_complete_{}", current_op_name)) {
+                                    let waiting_to_complete_current_op = match shsl.get_value(
+                                        &format!("waiting_to_complete_{}", current_op_name),
+                                    ) {
                                         SPValue::Int32(completed) => completed,
                                         _ => 0,
                                     };
                                     shsl.update(
-                                        "runner_plan_status",
+                                        "runner_plan_info",
                                         format!("Waiting for {current_op_name} to complete.")
                                             .to_spvalue(),
-                                    ).update(
+                                    )
+                                    .update(
                                         &format!("waiting_to_complete_{}", current_op_name),
                                         (waiting_to_complete_current_op + 1).to_spvalue(),
                                     )
@@ -267,10 +279,7 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                             }
                         } else {
                             // this shouldn't really happen
-                            shsl.update(
-                                "runner_plan_status",
-                                format!("Doing nothing.").to_spvalue(),
-                            )
+                            shsl.update("runner_plan_info", format!("Doing nothing.").to_spvalue())
                         }
                     }
                 },
