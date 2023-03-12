@@ -31,3 +31,7 @@ path = "src/emulators/random_scanner_emulator.rs"
 [[bin]]
 name = "random_gripper_emulator"
 path = "src/emulators/random_gripper_emulator.rs"
+
+[[bin]]
+name = "test"
+path = "src/test.rs"

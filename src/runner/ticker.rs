@@ -100,9 +100,17 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
     let mut shsl = shared_state.clone();
 
     for t in &model.auto_transitions {
+        let taken_auto_counter = match shsl.get_value(&format!("taken_auto_{}", t.name)) {
+            SPValue::Int32(taken) => taken,
+            _ => 0,
+        };
         if t.clone().eval_running(&shsl) {
             r2r::log_warn!(node_id, "Taking the free transition: {}.", t.name);
-            shsl = t.clone().take_running(&shsl);
+            let new_state = shsl.update(
+                &format!("taken_auto_{}", t.name),
+                (taken_auto_counter + 1).to_spvalue(),
+            );
+            shsl = t.clone().take_running(&new_state);
         }
     }
 
@@ -148,23 +156,48 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                     .duration_since(UNIX_EPOCH)
                                     .expect("Time went backwards")
                                     .as_secs_f64();
-                                let shsl = shsl.update(
-                                    &format!("timestamp_{}", current_op_name),
-                                    since_the_epoch.to_spvalue(),
-                                );
+                                let current_op_started =
+                                    match shsl.get_value(&format!("started_{}", current_op_name)) {
+                                        SPValue::Int32(started) => started,
+                                        _ => 0,
+                                    };
+                                let shsl = shsl
+                                    .update(
+                                        &format!("timestamp_{}", current_op_name),
+                                        since_the_epoch.to_spvalue(),
+                                    )
+                                    .update(
+                                        &format!("started_{}", current_op_name),
+                                        (current_op_started + 1).to_spvalue(),
+                                    );
+
                                 current_op.clone().start_running(&shsl)
                             } else {
                                 // The operation can be started but is not enabled
+                                let waiting_to_start_current_op =
+                                    match shsl.get_value(&format!("waiting_to_start_{}", current_op_name)) {
+                                        SPValue::Int32(started) => started,
+                                        _ => 0,
+                                    };
                                 shsl.update(
                                     "runner_plan_status",
                                     format!("Waiting for {current_op_name} to be enabled.")
                                         .to_spvalue(),
+                                ).update(
+                                    &format!("waiting_to_start_{}", current_op_name),
+                                    (waiting_to_start_current_op + 1).to_spvalue(),
                                 )
                             }
                         } else if current_op_state == "executing".to_spvalue() {
                             if current_op.clone().can_be_completed(&shsl) {
                                 // complete the operation and take a step in the plan
                                 let shsl = current_op.clone().complete_running(&shsl);
+                                let current_op_completed = match shsl
+                                    .get_value(&format!("completed_{}", current_op_name))
+                                {
+                                    SPValue::Int32(completed) => completed,
+                                    _ => 0,
+                                };
                                 shsl.update(
                                     "runner_plan_current_step",
                                     next_step_in_plan.to_spvalue(),
@@ -172,6 +205,10 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                 .update(
                                     "runner_plan_status",
                                     format!("Completed step {curr_step}.").to_spvalue(),
+                                )
+                                .update(
+                                    &format!("completed_{}", current_op_name),
+                                    (current_op_completed + 1).to_spvalue(),
                                 )
                             } else {
                                 // the operation is still executing, check if operation timeout is exceeded
@@ -193,10 +230,10 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                     .expect("Time went backwards")
                                     .as_secs_f64();
                                 if (since_the_epoch - timestamp_current_op) > deadline_current_op {
-                                    let nr_timeouts = match shsl
-                                        .get_value(&format!("timeouts_{}", current_op_name))
+                                    let nr_timedout = match shsl
+                                        .get_value(&format!("timedout_{}", current_op_name))
                                     {
-                                        SPValue::Int32(nr_timeouts) => nr_timeouts,
+                                        SPValue::Int32(nr_timedout) => nr_timedout,
                                         _ => 0,
                                     };
                                     shsl.update(
@@ -209,14 +246,22 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                         since_the_epoch.to_spvalue(),
                                     )
                                     .update(
-                                        &format!("timeouts_{}", current_op_name),
-                                        (nr_timeouts + 1).to_spvalue(),
+                                        &format!("timedout_{}", current_op_name),
+                                        (nr_timedout + 1).to_spvalue(),
                                     )
                                 } else {
+                                    let waiting_to_complete_current_op =
+                                    match shsl.get_value(&format!("waiting_to_complete_{}", current_op_name)) {
+                                        SPValue::Int32(completed) => completed,
+                                        _ => 0,
+                                    };
                                     shsl.update(
                                         "runner_plan_status",
                                         format!("Waiting for {current_op_name} to complete.")
                                             .to_spvalue(),
+                                    ).update(
+                                        &format!("waiting_to_complete_{}", current_op_name),
+                                        (waiting_to_complete_current_op + 1).to_spvalue(),
                                     )
                                 }
                             }

@@ -1,4 +1,5 @@
 use micro_sp::Model;
+use r2r::micro_sp_emulation_msgs::srv::SetState;
 use r2r::micro_sp_emulation_msgs::srv::TriggerGripper;
 use r2r::micro_sp_emulation_msgs::srv::TriggerScan;
 use std::sync::{Arc, Mutex};
@@ -8,13 +9,13 @@ pub static TICKER_RATE: u64 = 100;
 pub static PUBLISHER_RATE: u64 = 100;
 
 mod models;
-mod runner;
 use models::scan_grip_rob_model::*;
+
+mod runner;
 use runner::gripper_client_ticker::*;
 use runner::scanner_client_ticker::*;
+use runner::set_state_server::*;
 use runner::ticker::*;
-
-mod tests;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -23,19 +24,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ticker_timer = node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
 
-    // test
     let m = scan_grip_rob_model();
     let model = Model::new(&m.0, m.1, m.2, m.3, m.4);
 
     let shared_state = Arc::new(Mutex::new(model.state.clone()));
 
+    let set_state_service = node.create_service::<SetState::Service>("set_state")?;
+
     let scanner_client = node.create_client::<TriggerScan::Service>("scanner_service")?;
     let gripper_client = node.create_client::<TriggerGripper::Service>("gripper_service")?;
+    
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        let result = set_state_server(set_state_service, &shared_state_clone, NODE_ID).await;
+        match result {
+            Ok(()) => r2r::log_info!(NODE_ID, "Scanner service call succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Scanner service call failed with: '{}'.", e),
+        };
+    });
 
     let waiting_for_scanner_server = node.is_available(&scanner_client)?;
     let waiting_for_gripper_server = node.is_available(&gripper_client)?;
 
-    let shared_state_clone = shared_state.clone();
     let scanner_timer = node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
     let gripper_timer = node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
 
@@ -43,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         node.spin_once(std::time::Duration::from_millis(100));
     });
 
+    let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
         match scanner_client_ticker(
             &scanner_client,

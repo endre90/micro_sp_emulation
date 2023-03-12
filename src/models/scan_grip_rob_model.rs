@@ -11,16 +11,16 @@ pub fn scan_grip_rob_model() -> (
     // -------------------------------------------------------
 
     // Scanner variables
-    let scanner_request_trigger = bv_runner!("scanner_request_trigger");
+    let scanner_request_trigger = bv_estimated!("scanner_request_trigger");
     let fail_counter_scanner = iv_runner!("fail_counter_scanner");
     let scanner_request_state = v_runner!("scanner_request_state");
     
     // Gripper variables
-    let gripper_request_trigger = bv_runner!("gripper_request_trigger");
+    let gripper_request_trigger = bv_estimated!("gripper_request_trigger");
     let gripper_command = v_runner!("gripper_command");
     let fail_counter_gripper = iv_runner!("fail_counter_gripper");
     let gripper_request_state = v_runner!("gripper_request_state");
-    let gripper_actual_state = v_measured!("gripper_actual_state", vec!("opened", "closed", "gripping", "unknown"));
+    let gripper_actual_state = v_estimated!("gripper_actual_state", vec!("opened", "closed", "gripping", "unknown"));
 
     // Estimated(memory) variables too keep track of the state
     let scanned_a = bv_estimated!("scanned_a");
@@ -85,11 +85,19 @@ pub fn scan_grip_rob_model() -> (
     let op_scan_box_a = v_runner!("op_scan_box_a");
     let timestamp_op_scan_box_a = fv_runner!("timestamp_op_scan_box_a");
     let deadline_op_scan_box_a = fv_runner!("deadline_op_scan_box_a");
-    let timeouts_op_scan_box_a = iv_runner!("timeouts_op_scan_box_a");
+    let timedout_op_scan_box_a = iv_runner!("timedout_op_scan_box_a");
+    let started_op_scan_box_a = iv_runner!("started_op_scan_box_a");
+    let completed_op_scan_box_a = iv_runner!("completed_op_scan_box_a");
+    let waiting_to_start_op_scan_box_a = iv_runner!("waiting_to_start_op_scan_box_a");
+    let waiting_to_complete_op_scan_box_a = iv_runner!("waiting_to_complete_op_scan_box_a");
     let state = state.add(assign!(op_scan_box_a, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_scan_box_a, 0.0.to_spvalue()));
     let state = state.add(assign!(deadline_op_scan_box_a, 2.0.to_spvalue()));
-    let state = state.add(assign!(timeouts_op_scan_box_a, 0.to_spvalue()));
+    let state = state.add(assign!(timedout_op_scan_box_a, 0.to_spvalue()));
+    let state = state.add(assign!(started_op_scan_box_a, 0.to_spvalue()));
+    let state = state.add(assign!(completed_op_scan_box_a, 0.to_spvalue()));
+    let state = state.add(assign!(waiting_to_start_op_scan_box_a, 0.to_spvalue()));
+    let state = state.add(assign!(waiting_to_complete_op_scan_box_a, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_scan_box_a"),
         // precondition
@@ -131,11 +139,19 @@ pub fn scan_grip_rob_model() -> (
     let op_open_gripper = v_runner!("op_open_gripper");
     let timestamp_op_open_gripper = fv_runner!("timestamp_op_open_gripper");
     let deadline_op_open_gripper = fv_runner!("deadline_op_open_gripper");
-    let timeouts_op_open_gripper = iv_runner!("timeouts_op_open_gripper");
+    let timedout_op_open_gripper = iv_runner!("timedout_op_open_gripper");
+    let started_op_open_gripper = iv_runner!("started_op_open_gripper");
+    let completed_op_open_gripper = iv_runner!("completed_op_open_gripper");
+    let waiting_to_start_op_open_gripper = iv_runner!("waiting_to_start_op_open_gripper");
+    let waiting_to_complete_op_open_gripper = iv_runner!("waiting_to_complete_op_open_gripper");
     let state = state.add(assign!(op_open_gripper, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_open_gripper, 0.0.to_spvalue()));
     let state = state.add(assign!(deadline_op_open_gripper, 1.0.to_spvalue()));
-    let state = state.add(assign!(timeouts_op_open_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(timedout_op_open_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(started_op_open_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(completed_op_open_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(waiting_to_start_op_open_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(waiting_to_complete_op_open_gripper, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_open_gripper"),
         // precondition
@@ -177,11 +193,19 @@ pub fn scan_grip_rob_model() -> (
     let op_close_gripper = v_runner!("op_close_gripper");
     let timestamp_op_close_gripper = fv_runner!("timestamp_op_close_gripper");
     let deadline_op_close_gripper = fv_runner!("deadline_op_close_gripper");
-    let timeouts_op_close_gripper = iv_runner!("timeouts_op_close_gripper");
+    let timedout_op_close_gripper = iv_runner!("timedout_op_close_gripper");
+    let started_op_close_gripper = iv_runner!("started_op_close_gripper");
+    let completed_op_close_gripper = iv_runner!("completed_op_close_gripper");
+    let waiting_to_start_op_close_gripper = iv_runner!("waiting_to_start_op_close_gripper");
+    let waiting_to_complete_op_close_gripper = iv_runner!("waiting_to_complete_op_close_gripper");
     let state = state.add(assign!(op_close_gripper, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_close_gripper, 0.0.to_spvalue()));
     let state = state.add(assign!(deadline_op_close_gripper, 1.0.to_spvalue()));
-    let state = state.add(assign!(timeouts_op_close_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(timedout_op_close_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(started_op_close_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(completed_op_close_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(waiting_to_start_op_close_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(waiting_to_complete_op_close_gripper, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_close_gripper"),
         // precondition
@@ -217,7 +241,23 @@ pub fn scan_grip_rob_model() -> (
             Vec::<&str>::new(),
             &state
         ),
-    ));    
+    )); 
+
+    // let mut state = state.clone(); 
+    // for op in vec!("op_scan_box_a", "op_open_gripper", "op_close_gripper") {
+    //     // let op_close_gripper = v_runner!("op_close_gripper");
+    //     // let timestamp_op_close_gripper = fv_runner!("timestamp_op_close_gripper");
+    //     // let deadline_op_close_gripper = fv_runner!("deadline_op_close_gripper");
+    //     // let timedout_op_close_gripper = iv_runner!("timedout_op_close_gripper");
+    //     // let started_op_close_gripper = iv_runner!("started_op_close_gripper");
+    //     // let completed_op_close_gripper = iv_runner!("completed_op_close_gripper");
+    //     let state = state.add(assign!(v_runner!(op), "initial".to_spvalue()));
+    //     let state = state.add(assign!(timestamp_op_close_gripper, 0.0.to_spvalue()));
+    //     let state = state.add(assign!(deadline_op_close_gripper, 1.0.to_spvalue()));
+    //     let state = state.add(assign!(timedout_op_close_gripper, 0.to_spvalue()));
+    //     let state = state.add(assign!(started_op_close_gripper, 0.to_spvalue()));
+    //     state = state.add(assign!(completed_op_close_gripper, 0.to_spvalue()));
+    // }
 
     // Define automatic transitions (these transitions will immediatelly
     // be executed if evaluated to be true)
@@ -225,6 +265,8 @@ pub fn scan_grip_rob_model() -> (
 
     // TODO: add replan or abort if timeout?
 
+    let taken_auto_replan_if_scanner_failed = iv_runner!("taken_auto_replan_if_scanner_failed");
+    let state = state.add(assign!(taken_auto_replan_if_scanner_failed, 0.to_spvalue()));
     auto_transitions.push(t!(
         // name
         "replan_if_scanner_failed",
@@ -247,6 +289,8 @@ pub fn scan_grip_rob_model() -> (
         &state
     ));
 
+    let taken_auto_replan_if_gripper_failed = iv_runner!("taken_auto_replan_if_gripper_failed");
+    let state = state.add(assign!(taken_auto_replan_if_gripper_failed, 0.to_spvalue()));
     auto_transitions.push(t!(
         // name
         "replan_if_gripper_failed",
@@ -269,6 +313,8 @@ pub fn scan_grip_rob_model() -> (
         &state
     ));
 
+    let taken_auto_replan_if_gripper_cant_completely_close = iv_runner!("taken_auto_replan_if_gripper_cant_completely_close");
+    let state = state.add(assign!(taken_auto_replan_if_gripper_cant_completely_close, 0.to_spvalue()));
     auto_transitions.push(t!(
         // name
         "replan_if_gripper_cant_completely_close",
