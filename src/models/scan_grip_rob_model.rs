@@ -47,8 +47,8 @@ pub fn scan_grip_rob_model() -> (
     // included when calling Model::new()...)
     let state = state.add(SPAssignment::new(
         v_runner!("runner_goal"),
-        // "var:item_a_pose == atr && var:item_b_pose == atr".to_spvalue(),
-        "var:scanned_a == true && var:gripper_actual_state == closed".to_spvalue(),
+        SPValue::Unknown // now we can inject from the tester
+        // "var:scanned_a == true && var:gripper_actual_state == closed".to_spvalue(),
     ));
     let state = state.add(SPAssignment::new(
         av_runner!("runner_plan"),

@@ -1,8 +1,8 @@
 use futures::{Stream, StreamExt};
 use micro_sp::*;
 use ordered_float::OrderedFloat;
-use r2r::{micro_sp_emulation_msgs::srv::SetState, QosProfile};
 use r2r::std_msgs::msg::String as StringMsg;
+use r2r::{micro_sp_emulation_msgs::srv::SetState, QosProfile};
 use rand::seq::SliceRandom;
 use std::sync::{Arc, Mutex};
 
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let waiting_for_server = node.is_available(&client)?;
 
     let state_listener = node.subscribe::<StringMsg>("state", QosProfile::default())?;
-    let shared_state = Arc::new(Mutex::new(HashMap::new()));   
+    let shared_state = Arc::new(Mutex::new(HashMap::new()));
 
     let handle = std::thread::spawn(move || loop {
         node.spin_once(std::time::Duration::from_millis(100));
@@ -34,16 +34,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
-        match state_listener_callback(state_listener, &shared_state_clone, NODE_ID)
-            .await
-        {
+        match state_listener_callback(state_listener, &shared_state_clone, NODE_ID).await {
             Ok(()) => (),
             Err(e) => r2r::log_error!(NODE_ID, "Extra tf listener failed with: '{}'.", e),
         };
     });
 
+    let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
-        let result = test_process(&client).await;
+        let result = test_process(&client, &shared_state_clone).await;
         match result {
             Ok(()) => r2r::log_info!(NODE_ID, "Set State Service call succeeded."),
             Err(e) => r2r::log_error!(NODE_ID, "Set State Service call failed with: '{}'.", e),
@@ -76,13 +75,22 @@ pub async fn state_listener_callback(
                     let to_update_prim = value.split_off(7);
                     let to_update = match value.as_str() {
                         "array__" => to_update_prim.to_spvalue(),
-                        "bool___" => to_update_prim.parse::<bool>().unwrap_or_default().to_spvalue(),
-                        "float__" => to_update_prim.parse::<OrderedFloat<f64>>().unwrap_or_default().to_spvalue(),
+                        "bool___" => to_update_prim
+                            .parse::<bool>()
+                            .unwrap_or_default()
+                            .to_spvalue(),
+                        "float__" => to_update_prim
+                            .parse::<OrderedFloat<f64>>()
+                            .unwrap_or_default()
+                            .to_spvalue(),
                         "string_" => to_update_prim.to_spvalue(),
-                        "int____" => to_update_prim.parse::<i32>().unwrap_or_default().to_spvalue(),
+                        "int____" => to_update_prim
+                            .parse::<i32>()
+                            .unwrap_or_default()
+                            .to_spvalue(),
                         // "time___" => SPValue::Time(SystemTime::now()),
                         "unknown" => SPValue::Unknown,
-                        _ => panic!("can't parse that... {:?}", value)
+                        _ => panic!("can't parse that... {:?}", value),
                     };
                     shsl.insert(k.to_owned(), to_update);
                 });
@@ -95,28 +103,134 @@ pub async fn state_listener_callback(
     }
 }
 
-async fn test_process(
+// only perform test when plan state is failed, done, or aborted
+async fn some_random_test_process(
     client: &r2r::Client<SetState::Service>,
+    shared_state: &Arc<Mutex<HashMap<String, SPValue>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    Ok(for _ in 0..NR_TEST_CASES {
-        let state = HashMap::from([
-            (
-                "gripper_actual_state".to_string(),
-                vec!["opened", "closed", "gripping", "unknown"]
-                    .choose(&mut rand::thread_rng())
-                    .unwrap()
-                    .to_spvalue(),
-            ),
-            (
-                "scanned_a".to_string(),
-                vec![true, false]
-                    .choose(&mut rand::thread_rng())
-                    .unwrap()
-                    .to_spvalue(),
-            ),
-        ]);
-        println!("state: {:?}", state);
-        let _res = client_callback(client, state).await;
+    let mut test_case = 0;
+    Ok(while test_case <= NR_TEST_CASES {
+        let shsl = shared_state.lock().unwrap().clone();
+        match shsl.get("runner_plan_state") {
+            Some(runner_plan_state) => {
+                match runner_plan_state {
+                    SPValue::String(plan_state) => {
+                        if plan_state == "failed" || plan_state == "done" || plan_state == "aborted"
+                        {
+                            test_case = test_case + 1;
+                            let state = HashMap::from([
+                            (
+                                "runner_goal".to_string(),
+                                vec!["var:scanned_a == true", "var:scanned_a == true && var:gripper_actual_state == closed", "var:gripper_actual_state == closed"]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            (
+                                "gripper_actual_state".to_string(),
+                                vec!["opened", "closed", "gripping", "unknown"]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            (
+                                "scanned_a".to_string(),
+                                vec![true, false]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            ("runner_replanned".to_string(), false.to_spvalue()),
+                            ("runner_replan".to_string(), true.to_spvalue()),
+                            ("runner_plan".to_string(), SPValue::Unknown),
+                            ("runner_plan_state".to_string(), "empty".to_spvalue()),
+                            ("runner_plan_info".to_string(), "Tester injected a new state.".to_spvalue())
+                            
+                        ]);
+                            println!("state: {:?}", state);
+                            let _res = client_callback(client, state).await;
+                        } else {
+                            ()
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            None => (),
+        }
+    })
+}
+
+// some things we can test:
+// 1. if the goal is that the object is to be scanned, the object should eventually be scanned
+// 2. if scanning fails, the object should be re-scanned
+// 3. if scanning fails 5 times in total, the goal should be aborted
+// 4. if scanning fails 3 times in a row, the goal should be aborted
+// 5. if scanning times out, try to re-scanned again
+// 6. if scanning times out 2 times in a row, the goal should be cancelled
+
+// some testing strategies:
+// random is random, exhaustive is exhaustive, but...
+// strategic testing is for the previous properties:
+// 1. define a set of simple goals where the object is scanned in all of them. Now we have to make 
+//      an association that if the scan request succeeds, the test will be finished sooner. 
+//      Maybe I can do that manually, i.e. to set the goal, initial state and also the emulator parameters...
+// 2. force failure of scanning, if rescan is triggeredm the test succeeds...
+// so on
+async fn scanner_test_process(
+    client: &r2r::Client<SetState::Service>,
+    shared_state: &Arc<Mutex<HashMap<String, SPValue>>>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut test_case = 0;
+    Ok(while test_case <= NR_TEST_CASES {
+        let shsl = shared_state.lock().unwrap().clone();
+        match shsl.get("runner_plan_state") {
+            Some(runner_plan_state) => {
+                match runner_plan_state {
+                    SPValue::String(plan_state) => {
+                        if plan_state == "failed" || plan_state == "done" || plan_state == "aborted"
+                        {
+                            test_case = test_case + 1;
+                            let state = HashMap::from([
+                            (
+                                "runner_goal".to_string(),
+                                vec!["var:scanned_a == true", "var:scanned_a == true && var:gripper_actual_state == closed", "var:gripper_actual_state == closed"]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            (
+                                "gripper_actual_state".to_string(),
+                                vec!["opened", "closed", "gripping", "unknown"]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            (
+                                "scanned_a".to_string(),
+                                vec![true, false]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            ("runner_replanned".to_string(), false.to_spvalue()),
+                            ("runner_replan".to_string(), true.to_spvalue()),
+                            ("runner_plan".to_string(), SPValue::Unknown),
+                            ("runner_plan_state".to_string(), "empty".to_spvalue()),
+                            ("runner_plan_info".to_string(), "Tester injected a new state.".to_spvalue())
+                            
+                        ]);
+                            println!("state: {:?}", state);
+                            let _res = client_callback(client, state).await;
+                        } else {
+                            ()
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            None => (),
+        }
     })
 }
 
@@ -124,17 +238,21 @@ async fn client_callback(
     client: &r2r::Client<SetState::Service>,
     state: HashMap<String, SPValue>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
     let mut map = serde_json::Map::<String, Value>::new();
     state.iter().for_each(|(k, v)| {
-        let _ = map.insert(k.to_string(), match v {
-            SPValue::Array(_, val) => Value::from(format!("array__{:?}", val)),
-            SPValue::Bool(val) => Value::from(format!("bool___{}", val)),
-            SPValue::Float64(val) => Value::from(format!("float__{}", val)),
-            SPValue::String(val) => Value::from(format!("string_{}", val)),
-            SPValue::Int32(val) => Value::from(format!("int____{}", val)),
-            SPValue::Time(val) => Value::from(format!("time___{:?}", val)),
-            SPValue::Unknown => Value::from(format!("unknown")),
-        });
+        let _ = map.insert(
+            k.to_string(),
+            match v {
+                SPValue::Array(_, val) => Value::from(format!("array__{:?}", val)),
+                SPValue::Bool(val) => Value::from(format!("bool___{}", val)),
+                SPValue::Float64(val) => Value::from(format!("float__{}", val)),
+                SPValue::String(val) => Value::from(format!("string_{}", val)),
+                SPValue::Int32(val) => Value::from(format!("int____{}", val)),
+                SPValue::Time(val) => Value::from(format!("time___{:?}", val)),
+                SPValue::Unknown => Value::from(format!("unknown")),
+            },
+        );
     });
 
     let state = serde_json::Value::Object(map).to_string();
