@@ -462,6 +462,8 @@ pub fn scan_grip_rob_model() -> (
         &state
     ));
 
+    let state = state.add(assign!(iv_runner!(&format!("nr_autos").as_str()), (auto_transitions.len() as i32).to_spvalue()));
+
     (
         "scanner_model".to_string(),
         state.clone(),

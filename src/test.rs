@@ -173,6 +173,11 @@ async fn some_random_test_process(
     let shsl = shared_state.lock().unwrap().clone();
 
     let mut nr_of_operations = 0;
+    let nr_of_autos = match shsl.get("nr_autos").unwrap() {
+        SPValue::Int32(value) => *value as f32, 
+        _ => 0.0 as f32
+    };
+    let mut nr_of_taken_autos = 0;
     let mut nr_disabled = 0;
     let mut nr_executing = 0;
     let mut nr_failed = 0;
@@ -216,21 +221,30 @@ async fn some_random_test_process(
                     nr_completed = nr_completed + 1
                 },
                 _ => ()
-            }           
+            }    
+        } else if k.starts_with("taken_auto") {
+            match v {
+                SPValue::Int32(number) => if *number != 0 as i32 {
+                    nr_of_taken_autos = nr_of_taken_autos + 1
+                },
+                _ => ()
+            }        
+         
         } else {
 
         }
     });
-    let total = (nr_completed + nr_disabled + nr_executing + nr_failed + nr_timedout) as f32/(5.0*nr_of_operations as f32);
+    let total = (nr_completed + nr_disabled + nr_executing + nr_failed + nr_timedout + nr_of_taken_autos) as f32/((5.0*nr_of_operations as f32) + nr_of_autos);
     println!("=====================");
     // println!("CSBM-IAS report: {:.2}%", total);
-    println!("CSBM-IAS report: {:.2}%", total*100.0);
+    println!("Coverabilty report: CSBM-IAS: {:.2}%", total*100.0);
     println!("=====================");
-    println!("Visited disabled state: {} out of {}.", nr_disabled, nr_of_operations);
-    println!("Visited executing state: {} out of {}.", nr_executing, nr_of_operations);
-    println!("Visited failed state: {} out of {}.", nr_failed, nr_of_operations);
-    println!("Visited timedout state: {} out of {}.", nr_timedout, nr_of_operations);
-    println!("Visited completed state: {} out of {}.", nr_completed, nr_of_operations);
+    println!("Visited disabled state: {} out of {}", nr_disabled, nr_of_operations);
+    println!("Visited executing state: {} out of {}", nr_executing, nr_of_operations);
+    println!("Visited failed state: {} out of {}", nr_failed, nr_of_operations);
+    println!("Visited timedout state: {} out of {}", nr_timedout, nr_of_operations);
+    println!("Visited completed state: {} out of {}", nr_completed, nr_of_operations);
+    println!("Automatic transitions taken: {} out of {}", nr_of_taken_autos, nr_of_autos);
     Ok(())
 }
 
