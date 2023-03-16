@@ -109,7 +109,7 @@ async fn some_random_test_process(
     shared_state: &Arc<Mutex<HashMap<String, SPValue>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut test_case = 0;
-    Ok(while test_case < NR_TEST_CASES {
+    while test_case < NR_TEST_CASES {
         tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
         let shsl = shared_state.lock().unwrap().clone();
         match shsl.get("runner_plan_state") {
@@ -168,7 +168,70 @@ async fn some_random_test_process(
             }
             None => (),
         }
-    })
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+    let shsl = shared_state.lock().unwrap().clone();
+
+    let mut nr_of_operations = 0;
+    let mut nr_disabled = 0;
+    let mut nr_executing = 0;
+    let mut nr_failed = 0;
+    let mut nr_timedout = 0;
+    let mut nr_completed = 0;
+    println!("Calculating SCBM-IAS...");
+    shsl.iter().for_each(|(k, v)| {
+        if k.starts_with("op_") {
+            nr_of_operations = nr_of_operations + 1
+        } else if k.starts_with("diabled_") {
+            match v {
+                SPValue::Int32(number) => if *number != 0 as i32 {
+                    nr_disabled = nr_disabled + 1
+                },
+                _ => ()
+            }           
+        } else if k.starts_with("fail_") {
+            match v {
+                SPValue::Int32(number) => if *number != 0 as i32 {
+                    nr_failed = nr_failed + 1
+                },
+                _ => ()
+            }           
+        } else if k.starts_with("executing_") {
+            match v {
+                SPValue::Int32(number) => if *number != 0 as i32 {
+                    nr_executing = nr_executing + 1
+                },
+                _ => ()
+            }           
+        } else if k.starts_with("timedout_") {
+            match v {
+                SPValue::Int32(number) => if *number != 0 as i32 {
+                    nr_timedout = nr_timedout + 1
+                },
+                _ => ()
+            }           
+        } else if k.starts_with("completed_") {
+            match v {
+                SPValue::Int32(number) => if *number != 0 as i32 {
+                    nr_completed = nr_completed + 1
+                },
+                _ => ()
+            }           
+        } else {
+
+        }
+    });
+    let total = (nr_completed + nr_disabled + nr_executing + nr_failed + nr_timedout) as f32/(5.0*nr_of_operations as f32);
+    println!("=====================");
+    // println!("CSBM-IAS report: {:.2}%", total);
+    println!("CSBM-IAS report: {:.2}%", total*100.0);
+    println!("=====================");
+    println!("Visited disabled state: {} out of {}.", nr_disabled, nr_of_operations);
+    println!("Visited executing state: {} out of {}.", nr_executing, nr_of_operations);
+    println!("Visited failed state: {} out of {}.", nr_failed, nr_of_operations);
+    println!("Visited timedout state: {} out of {}.", nr_timedout, nr_of_operations);
+    println!("Visited completed state: {} out of {}.", nr_completed, nr_of_operations);
+    Ok(())
 }
 
 // some things we can test:

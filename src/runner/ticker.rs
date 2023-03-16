@@ -164,26 +164,26 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                     .duration_since(UNIX_EPOCH)
                                     .expect("Time went backwards")
                                     .as_secs_f64();
-                                let current_op_started =
-                                    match shsl.get_value(&format!("started_{}", current_op_name)) {
-                                        SPValue::Int32(started) => started,
-                                        _ => 0,
-                                    };
+                                // let current_op_started =
+                                //     match shsl.get_value(&format!("started_{}", current_op_name)) {
+                                //         SPValue::Int32(started) => started,
+                                //         _ => 0,
+                                //     };
                                 let shsl = shsl
                                     .update(
                                         &format!("timestamp_{}", current_op_name),
                                         since_the_epoch.to_spvalue(),
-                                    )
-                                    .update(
-                                        &format!("started_{}", current_op_name),
-                                        (current_op_started + 1).to_spvalue(),
                                     );
+                                    // .update(
+                                    //     &format!("started_{}", current_op_name),
+                                    //     (current_op_started + 1).to_spvalue(),
+                                    // );
 
                                 current_op.clone().start_running(&shsl)
                             } else {
                                 // The operation can be started but is not enabled
-                                let waiting_to_start_current_op = match shsl
-                                    .get_value(&format!("waiting_to_start_{}", current_op_name))
+                                let disabled_current_op = match shsl
+                                    .get_value(&format!("disabled_{}", current_op_name))
                                 {
                                     SPValue::Int32(started) => started,
                                     _ => 0,
@@ -194,8 +194,8 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                         .to_spvalue(),
                                 )
                                 .update(
-                                    &format!("waiting_to_start_{}", current_op_name),
-                                    (waiting_to_start_current_op + 1).to_spvalue(),
+                                    &format!("disabled_{}", current_op_name),
+                                    (disabled_current_op + 1).to_spvalue(),
                                 )
                             }
                         } else if current_op_state == "executing".to_spvalue() {
@@ -260,8 +260,8 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                         (nr_timedout + 1).to_spvalue(),
                                     )
                                 } else {
-                                    let waiting_to_complete_current_op = match shsl.get_value(
-                                        &format!("waiting_to_complete_{}", current_op_name),
+                                    let executing_current_op = match shsl.get_value(
+                                        &format!("executing_{}", current_op_name),
                                     ) {
                                         SPValue::Int32(completed) => completed,
                                         _ => 0,
@@ -272,8 +272,8 @@ async fn tick_the_runner(node_id: &str, model: &Model, shared_state: &State) -> 
                                             .to_spvalue(),
                                     )
                                     .update(
-                                        &format!("waiting_to_complete_{}", current_op_name),
-                                        (waiting_to_complete_current_op + 1).to_spvalue(),
+                                        &format!("executing_{}", current_op_name),
+                                        (executing_current_op + 1).to_spvalue(),
                                     )
                                 }
                             }

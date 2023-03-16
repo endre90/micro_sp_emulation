@@ -108,16 +108,16 @@ pub fn scan_grip_rob_model() -> (
     let timedout_op_scan_box_a = iv_runner!("timedout_op_scan_box_a");
     let started_op_scan_box_a = iv_runner!("started_op_scan_box_a");
     let completed_op_scan_box_a = iv_runner!("completed_op_scan_box_a");
-    let waiting_to_start_op_scan_box_a = iv_runner!("waiting_to_start_op_scan_box_a");
-    let waiting_to_complete_op_scan_box_a = iv_runner!("waiting_to_complete_op_scan_box_a");
+    let disabled_op_scan_box_a = iv_runner!("disabled_op_scan_box_a");
+    let executing_op_scan_box_a = iv_runner!("executing_op_scan_box_a");
     let state = state.add(assign!(op_scan_box_a, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_scan_box_a, 0.0.to_spvalue()));
     let state = state.add(assign!(deadline_op_scan_box_a, 1.0.to_spvalue()));
     let state = state.add(assign!(timedout_op_scan_box_a, 0.to_spvalue()));
     let state = state.add(assign!(started_op_scan_box_a, 0.to_spvalue()));
     let state = state.add(assign!(completed_op_scan_box_a, 0.to_spvalue()));
-    let state = state.add(assign!(waiting_to_start_op_scan_box_a, 0.to_spvalue()));
-    let state = state.add(assign!(waiting_to_complete_op_scan_box_a, 0.to_spvalue()));
+    let state = state.add(assign!(disabled_op_scan_box_a, 0.to_spvalue()));
+    let state = state.add(assign!(executing_op_scan_box_a, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_scan_box_a"),
         // precondition
@@ -162,16 +162,16 @@ pub fn scan_grip_rob_model() -> (
     let timedout_op_open_gripper = iv_runner!("timedout_op_open_gripper");
     let started_op_open_gripper = iv_runner!("started_op_open_gripper");
     let completed_op_open_gripper = iv_runner!("completed_op_open_gripper");
-    let waiting_to_start_op_open_gripper = iv_runner!("waiting_to_start_op_open_gripper");
-    let waiting_to_complete_op_open_gripper = iv_runner!("waiting_to_complete_op_open_gripper");
+    let disabled_op_open_gripper = iv_runner!("disabled_op_open_gripper");
+    let executing_op_open_gripper = iv_runner!("executing_op_open_gripper");
     let state = state.add(assign!(op_open_gripper, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_open_gripper, 0.0.to_spvalue()));
     let state = state.add(assign!(deadline_op_open_gripper, 1.0.to_spvalue()));
     let state = state.add(assign!(timedout_op_open_gripper, 0.to_spvalue()));
     let state = state.add(assign!(started_op_open_gripper, 0.to_spvalue()));
     let state = state.add(assign!(completed_op_open_gripper, 0.to_spvalue()));
-    let state = state.add(assign!(waiting_to_start_op_open_gripper, 0.to_spvalue()));
-    let state = state.add(assign!(waiting_to_complete_op_open_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(disabled_op_open_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(executing_op_open_gripper, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_open_gripper"),
         // precondition
@@ -216,16 +216,16 @@ pub fn scan_grip_rob_model() -> (
     let timedout_op_close_gripper = iv_runner!("timedout_op_close_gripper");
     let started_op_close_gripper = iv_runner!("started_op_close_gripper");
     let completed_op_close_gripper = iv_runner!("completed_op_close_gripper");
-    let waiting_to_start_op_close_gripper = iv_runner!("waiting_to_start_op_close_gripper");
-    let waiting_to_complete_op_close_gripper = iv_runner!("waiting_to_complete_op_close_gripper");
+    let disabled_op_close_gripper = iv_runner!("disabled_op_close_gripper");
+    let executing_op_close_gripper = iv_runner!("executing_op_close_gripper");
     let state = state.add(assign!(op_close_gripper, "initial".to_spvalue()));
     let state = state.add(assign!(timestamp_op_close_gripper, 0.0.to_spvalue()));
     let state = state.add(assign!(deadline_op_close_gripper, 1.0.to_spvalue()));
     let state = state.add(assign!(timedout_op_close_gripper, 0.to_spvalue()));
     let state = state.add(assign!(started_op_close_gripper, 0.to_spvalue()));
     let state = state.add(assign!(completed_op_close_gripper, 0.to_spvalue()));
-    let state = state.add(assign!(waiting_to_start_op_close_gripper, 0.to_spvalue()));
-    let state = state.add(assign!(waiting_to_complete_op_close_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(disabled_op_close_gripper, 0.to_spvalue()));
+    let state = state.add(assign!(executing_op_close_gripper, 0.to_spvalue()));
     operations.push(Operation::new(
         &format!("op_close_gripper"),
         // precondition
@@ -271,8 +271,8 @@ pub fn scan_grip_rob_model() -> (
     let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
     let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
     let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("waiting_to_start_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("waiting_to_complete_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
 
     let pos = "box_b";
     let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
@@ -281,8 +281,8 @@ pub fn scan_grip_rob_model() -> (
     let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
     let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
     let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("waiting_to_start_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("waiting_to_complete_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
 
     let pos = "agv";
     let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
@@ -291,8 +291,8 @@ pub fn scan_grip_rob_model() -> (
     let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
     let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
     let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("waiting_to_start_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("waiting_to_complete_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
 
     // Gantry operations
     for pos in vec!("box_a", "box_b", "agv") {
