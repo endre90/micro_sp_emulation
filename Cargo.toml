@@ -25,12 +25,16 @@ name = "runner"
 path = "src/main.rs"
 
 [[bin]]
-name = "random_scanner_emulator"
-path = "src/emulators/random_scanner_emulator.rs"
+name = "scanner_emulator"
+path = "src/emulators/scanner_emulator.rs"
 
 [[bin]]
-name = "random_gripper_emulator"
-path = "src/emulators/random_gripper_emulator.rs"
+name = "gripper_emulator"
+path = "src/emulators/gripper_emulator.rs"
+
+[[bin]]
+name = "gantry_emulator"
+path = "src/emulators/gantry_emulator.rs"
 
 [[bin]]
 name = "test"

@@ -22,8 +22,17 @@ pub fn scan_grip_rob_model() -> (
     let gripper_request_state = v_runner!("gripper_request_state");
     let gripper_actual_state = v_estimated!("gripper_actual_state", vec!("opened", "closed", "gripping", "unknown"));
 
+    // Gantry variables
+    let gantry_request_trigger = bv_estimated!("gantry_request_trigger");
+    let gantry_command = v_runner!("gantry_command");
+    let fail_counter_gantry= iv_runner!("fail_counter_gantry");
+    let gantry_request_state = v_runner!("gantry_request_state");
+    let gantry_actual_state = v_estimated!("gantry_actual_state", vec!("box_a", "box_b", "agv", "unknown"));
+
     // Estimated(memory) variables too keep track of the state
     let scanned_a = bv_estimated!("scanned_a");
+    // let scanned_b = bv_estimated!("scanned_b");
+    // let mounted = bv_estimated!("mounted");
 
     // Make a state and assign some values to variables
     // (usually, unknown is a safe initial value for measured and command variables)
@@ -42,6 +51,13 @@ pub fn scan_grip_rob_model() -> (
     let state = state.add(assign!(gripper_actual_state, "unknown".to_spvalue()));
     let state = state.add(assign!(fail_counter_gripper, 0.to_spvalue()));
     let state = state.add(assign!(gripper_command, "none".to_spvalue()));
+
+    // Gantry variables
+    let state = state.add(assign!(gantry_request_trigger, false.to_spvalue()));
+    let state = state.add(assign!(gantry_request_state, "initial".to_spvalue()));
+    let state = state.add(assign!(gantry_actual_state, "unknown".to_spvalue()));
+    let state = state.add(assign!(fail_counter_gantry, 0.to_spvalue()));
+    let state = state.add(assign!(gantry_command, "none".to_spvalue()));
 
     // And some mandatory variables (actually, these should be automatically
     // included when calling Model::new()...)
@@ -247,21 +263,77 @@ pub fn scan_grip_rob_model() -> (
         ),
     )); 
 
-    // let mut state = state.clone(); 
-    // for op in vec!("op_scan_box_a", "op_open_gripper", "op_close_gripper") {
-    //     // let op_close_gripper = v_runner!("op_close_gripper");
-    //     // let timestamp_op_close_gripper = fv_runner!("timestamp_op_close_gripper");
-    //     // let deadline_op_close_gripper = fv_runner!("deadline_op_close_gripper");
-    //     // let timedout_op_close_gripper = iv_runner!("timedout_op_close_gripper");
-    //     // let started_op_close_gripper = iv_runner!("started_op_close_gripper");
-    //     // let completed_op_close_gripper = iv_runner!("completed_op_close_gripper");
-    //     let state = state.add(assign!(v_runner!(op), "initial".to_spvalue()));
-    //     let state = state.add(assign!(timestamp_op_close_gripper, 0.0.to_spvalue()));
-    //     let state = state.add(assign!(deadline_op_close_gripper, 1.0.to_spvalue()));
-    //     let state = state.add(assign!(timedout_op_close_gripper, 0.to_spvalue()));
-    //     let state = state.add(assign!(started_op_close_gripper, 0.to_spvalue()));
-    //     state = state.add(assign!(completed_op_close_gripper, 0.to_spvalue()));
-    // }
+    // uuuugh hackady hack
+    let pos = "box_a";
+    let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
+    let state = state.add(assign!(fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()), 0.0.to_spvalue()));
+    let state = state.add(assign!(fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()), 1.0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("waiting_to_start_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("waiting_to_complete_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+
+    let pos = "box_b";
+    let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
+    let state = state.add(assign!(fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()), 0.0.to_spvalue()));
+    let state = state.add(assign!(fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()), 1.0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("waiting_to_start_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("waiting_to_complete_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+
+    let pos = "agv";
+    let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
+    let state = state.add(assign!(fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()), 0.0.to_spvalue()));
+    let state = state.add(assign!(fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()), 1.0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("waiting_to_start_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(iv_runner!(&format!("waiting_to_complete_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+
+    // Gantry operations
+    for pos in vec!("box_a", "box_b", "agv") {
+        
+        operations.push(Operation::new(
+            &format!("op_gantry_move_to_{}", pos),
+            // precondition
+            t!(
+                // name
+                &format!("start_gantry_move_to_{}", pos).as_str(),
+                // planner guard
+                "var:gantry_request_state == initial && var:gantry_request_trigger == false",
+                // runner guard
+                "true",
+                // planner actions
+                vec!(format!("var: gantry_command <- {pos}").as_str(), "var:gantry_request_trigger <- true"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                &format!("complete_gantry_move_to_{}", pos).as_str(),
+                // planner guard
+                "true",
+                // runner guard
+                &format!("var:gantry_request_state == succeeded && var:gantry_actual_state == {pos}").as_str(),
+                // "true",
+                // planner actions
+                vec!(
+                    "var:gantry_request_trigger <- false",
+                    "var:gantry_request_state <- initial",
+                    &format!("var:gantry_actual_state <- {pos}")
+                ),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        )); 
+    };
 
     // Define automatic transitions (these transitions will immediatelly
     // be executed if evaluated to be true)
@@ -359,7 +431,32 @@ pub fn scan_grip_rob_model() -> (
             "var:runner_plan_info <- Aborted_due_to_timeout",
             "var:runner_plan_state <- aborted",
             "var:runner_replan <- false",
-            "var:runner_replanned <- false"
+            "var:runner_replanned <- false",
+            "var:timedout_op_scan_box_a <- 1"
+            // "var:runner_replan_trigger <- true"
+        ),
+        &state
+    ));
+
+    let taken_auto_replan_if_gantry_failed = iv_runner!("taken_auto_replan_if_gantry_failed");
+    let state = state.add(assign!(taken_auto_replan_if_gantry_failed, 0.to_spvalue()));
+    auto_transitions.push(t!(
+        // name
+        "replan_if_gantry_failed",
+        // planner guard
+        "var:gantry_request_state == failed",
+        // ruuner guard = none
+        "true",
+        // planner actions
+        Vec::<&str>::new(),
+        // runner actions - none
+        vec!(
+            "var:gantry_request_state <- initial",
+            "var:gantry_request_trigger <- false",
+            "var:runner_plan <- [unknown]",
+            "var:runner_plan_current_step <- [unknown]",
+            "var:runner_plan_info <- Waiting_for_the_re_plan",
+            "var:runner_replan <- true"
             // "var:runner_replan_trigger <- true"
         ),
         &state

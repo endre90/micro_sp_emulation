@@ -28,7 +28,7 @@ pub fn reset_all_operations(state: &State) -> State {
     mut_state
 }
 
-pub async fn ticker(
+pub async fn ticke_the_planner(
     node_id: &str,
     model: &Model,
     shared_state: &Arc<Mutex<State>>,

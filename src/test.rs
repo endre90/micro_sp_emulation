@@ -36,13 +36,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::task::spawn(async move {
         match state_listener_callback(state_listener, &shared_state_clone, NODE_ID).await {
             Ok(()) => (),
-            Err(e) => r2r::log_error!(NODE_ID, "Extra tf listener failed with: '{}'.", e),
+            Err(e) => r2r::log_error!(NODE_ID, "State listener failed with: '{}'.", e),
         };
     });
 
     let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
-        let result = test_process(&client, &shared_state_clone).await;
+        let result = some_random_test_process(&client, &shared_state_clone).await;
         match result {
             Ok(()) => r2r::log_info!(NODE_ID, "Set State Service call succeeded."),
             Err(e) => r2r::log_error!(NODE_ID, "Set State Service call failed with: '{}'.", e),
@@ -109,7 +109,8 @@ async fn some_random_test_process(
     shared_state: &Arc<Mutex<HashMap<String, SPValue>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut test_case = 0;
-    Ok(while test_case <= NR_TEST_CASES {
+    Ok(while test_case < NR_TEST_CASES {
+        tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
         let shsl = shared_state.lock().unwrap().clone();
         match shsl.get("runner_plan_state") {
             Some(runner_plan_state) => {
@@ -121,7 +122,8 @@ async fn some_random_test_process(
                             let state = HashMap::from([
                             (
                                 "runner_goal".to_string(),
-                                vec!["var:scanned_a == true", "var:scanned_a == true && var:gripper_actual_state == closed", "var:gripper_actual_state == closed"]
+                                // vec!["var:scanned_a == true", "var:scanned_a == true && var:gripper_actual_state == closed", "var:gripper_actual_state == closed"]
+                                vec!["var:scanned_a == true && var:gripper_actual_state == closed && var:gantry_actual_state == agv"]
                                     .choose(&mut rand::thread_rng())
                                     .unwrap()
                                     .to_spvalue(),
@@ -129,6 +131,13 @@ async fn some_random_test_process(
                             (
                                 "gripper_actual_state".to_string(),
                                 vec!["opened", "closed", "gripping", "unknown"]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            (
+                                "gantry_actual_state".to_string(),
+                                vec!["box_a", "box_b", "agv", "unknown"]
                                     .choose(&mut rand::thread_rng())
                                     .unwrap()
                                     .to_spvalue(),
@@ -147,7 +156,8 @@ async fn some_random_test_process(
                             ("runner_plan_info".to_string(), "Tester injected a new state.".to_spvalue())
                             
                         ]);
-                            println!("state: {:?}", state);
+                            println!("TEST CASE: {}", test_case);
+                            println!("PLAN STATE: {}", plan_state);
                             let _res = client_callback(client, state).await;
                         } else {
                             ()
@@ -163,11 +173,11 @@ async fn some_random_test_process(
 
 // some things we can test:
 // 1. if the goal is that the object is to be scanned, the object should eventually be scanned
-// 2. if scanning fails, the object should be re-scanned
-// 3. if scanning fails 5 times in total, the goal should be aborted
+// 2. if scanning fails, the object should be re-scanned (merge 2 and 4)
+// 3. if scanning fails 5 times in total, the goal should be aborted // skip this one
 // 4. if scanning fails 3 times in a row, the goal should be aborted
 // 5. if scanning times out, try to re-scanned again
-// 6. if scanning times out 2 times in a row, the goal should be cancelled
+// 6. if scanning times out 2 times in a row, the goal should be aborted
 
 // some testing strategies:
 // random is random, exhaustive is exhaustive, but...
@@ -176,69 +186,79 @@ async fn some_random_test_process(
 //      an association that if the scan request succeeds, the test will be finished sooner. 
 //      Maybe I can do that manually, i.e. to set the goal, initial state and also the emulator parameters...
 // 2. force failure of scanning, if rescan is triggeredm the test succeeds...
-// so on
-async fn scanner_test_process(
-    client: &r2r::Client<SetState::Service>,
-    shared_state: &Arc<Mutex<HashMap<String, SPValue>>>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let mut test_case = 0;
-    Ok(while test_case <= NR_TEST_CASES {
-        let shsl = shared_state.lock().unwrap().clone();
-        match shsl.get("runner_plan_state") {
-            Some(runner_plan_state) => {
-                match runner_plan_state {
-                    SPValue::String(plan_state) => {
-                        if plan_state == "failed" || plan_state == "done" || plan_state == "aborted"
-                        {
-                            test_case = test_case + 1;
-                            let state = HashMap::from([
-                            (
-                                "runner_goal".to_string(),
-                                vec!["var:scanned_a == true", "var:scanned_a == true && var:gripper_actual_state == closed", "var:gripper_actual_state == closed"]
-                                    .choose(&mut rand::thread_rng())
-                                    .unwrap()
-                                    .to_spvalue(),
-                            ),
-                            (
-                                "gripper_actual_state".to_string(),
-                                vec!["opened", "closed", "gripping", "unknown"]
-                                    .choose(&mut rand::thread_rng())
-                                    .unwrap()
-                                    .to_spvalue(),
-                            ),
-                            (
-                                "scanned_a".to_string(),
-                                vec![true, false]
-                                    .choose(&mut rand::thread_rng())
-                                    .unwrap()
-                                    .to_spvalue(),
-                            ),
-                            ("runner_replanned".to_string(), false.to_spvalue()),
-                            ("runner_replan".to_string(), true.to_spvalue()),
-                            ("runner_plan".to_string(), SPValue::Unknown),
-                            ("runner_plan_state".to_string(), "empty".to_spvalue()),
-                            ("runner_plan_info".to_string(), "Tester injected a new state.".to_spvalue())
+// so on...
+// async fn scanner_test_process(
+//     client: &r2r::Client<SetState::Service>,
+//     shared_state: &Arc<Mutex<HashMap<String, SPValue>>>,
+// ) -> Result<(), Box<dyn std::error::Error>> {
+//     let mut test_case = 0;
+//     Ok(while test_case < NR_TEST_CASES {
+//         tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+//         let shsl = shared_state.lock().unwrap().clone();
+//         match shsl.get("runner_plan_state") {
+//             Some(runner_plan_state) => {
+//                 match runner_plan_state {
+//                     SPValue::String(plan_state) => {
+//                         if plan_state == "failed" || plan_state == "done" || plan_state == "aborted"
+//                         {
+//                             test_case = test_case + 1;
+//                             let state = HashMap::from([
+//                             // should all be achieevable goals    
+//                             (
+//                                 "runner_goal".to_string(),
+//                                 vec!["var:scanned_a == true", "var:scanned_a == true && var:gripper_actual_state == closed", "var:scanned_a == true && var:gripper_actual_state == opened"]
+//                                     .choose(&mut rand::thread_rng())
+//                                     .unwrap()
+//                                     .to_spvalue(),
+//                             ),
+//                             (
+//                                 "gripper_actual_state".to_string(),
+//                                 vec!["opened", "closed", "gripping", "unknown"]
+//                                     .choose(&mut rand::thread_rng())
+//                                     .unwrap()
+//                                     .to_spvalue(),
+//                             ),
+//                             (
+//                                 "scanned_a".to_string(),
+//                                 vec![true, false]
+//                                     .choose(&mut rand::thread_rng())
+//                                     .unwrap()
+//                                     .to_spvalue(),
+//                             ),
+//                             ("runner_replanned".to_string(), false.to_spvalue()),
+//                             ("runner_replan".to_string(), true.to_spvalue()),
+//                             ("runner_plan".to_string(), SPValue::Unknown),
+//                             ("runner_plan_state".to_string(), "empty".to_spvalue()),
+//                             ("runner_plan_info".to_string(), "Tester injected a new state.".to_spvalue())
                             
-                        ]);
-                            println!("state: {:?}", state);
-                            let _res = client_callback(client, state).await;
-                        } else {
-                            ()
-                        }
-                    }
-                    _ => (),
-                }
-            }
-            None => (),
-        }
-    })
-}
+//                         ]);
+//                             println!("TEST CASE: {}", test_case);
+//                             println!("PLAN STATE: {}", plan_state);
+//                             let _res = client_callback(client, state).await; // 2 seconds delay in the call
+//                             // let shsl = shared_state.lock().unwrap().clone();
+
+//                             // TESTS:
+//                             // 1. if the goal is that the object is to be scanned, the object should eventually be scanned
+
+//                             // MAYBE I DO NEED AN ACTION FOR TESTING AFTER ALL...
+//                             // assert_eq!(shsl.get("runner_plan_state").unwrap().clone(), "done".to_spvalue());
+
+//                         } else {
+//                             ()
+//                         }
+//                     }
+//                     _ => (),
+//                 }
+//             }
+//             None => (),
+//         }
+//     })
+// }
 
 async fn client_callback(
     client: &r2r::Client<SetState::Service>,
     state: HashMap<String, SPValue>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
     let mut map = serde_json::Map::<String, Value>::new();
     state.iter().for_each(|(k, v)| {
         let _ = map.insert(

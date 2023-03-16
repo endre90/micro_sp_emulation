@@ -1,1 +1,1 @@
-pub mod scan_grip_rob_model;
+pub mod model;
