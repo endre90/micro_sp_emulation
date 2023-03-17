@@ -49,9 +49,15 @@ pub async fn robot_client_ticker(
                 let shsl = shared_state.lock().unwrap().clone();
 
                 *shared_state.lock().unwrap() = match response.success {
-                    true => shsl
-                        .update("robot_request_state", "succeeded".to_spvalue())
-                        .update("robot_actual_state", request.position.to_spvalue()),
+                    true => match robot_command.as_str() {
+                        "mount" | "unmount" => {
+                            shsl.update("robot_request_state", "succeeded".to_spvalue())
+                        }
+                        "move" => shsl
+                            .update("robot_request_state", "succeeded".to_spvalue())
+                            .update("robot_actual_state", request.position.to_spvalue()),
+                        _ => shsl,
+                    },
 
                     false => {
                         let robot_fail_counter = match shsl.get_value("fail_counter_robot") {
@@ -59,10 +65,7 @@ pub async fn robot_client_ticker(
                             _ => 0,
                         };
                         shsl.update("robot_request_state", "failed".to_spvalue())
-                            .update(
-                                "fail_counter_robot",
-                                (robot_fail_counter + 1).to_spvalue(),
-                            )
+                            .update("fail_counter_robot", (robot_fail_counter + 1).to_spvalue())
                     }
                 };
             }

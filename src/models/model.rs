@@ -100,6 +100,7 @@ pub fn scan_grip_rob_model() -> (
     // included when calling Model::new()...)
     let state = state.add(SPAssignment::new(
         v_runner!("runner_goal"),
+        // "var:robot_actual_state == agv && var:mounted == gripper".to_spvalue(),
         SPValue::Unknown, // now we can inject from the tester
                           // "var:scanned_a == true && var:gripper_actual_state == closed".to_spvalue(),
     ));
@@ -221,7 +222,7 @@ pub fn scan_grip_rob_model() -> (
             "true",
             // planner actions
             vec!(
-                "var: gripper_command <- open",
+                "var:gripper_command <- open",
                 "var:gripper_request_trigger <- true"
             ),
             //runner actions
@@ -280,7 +281,7 @@ pub fn scan_grip_rob_model() -> (
             // runner guard
             "true",
             // planner actions
-            vec!("var: gripper_command <- close", "var:gripper_request_trigger <- true"),
+            vec!("var:gripper_command <- close", "var:gripper_request_trigger <- true"),
             //runner actions
             Vec::<&str>::new(),
             &state
@@ -423,7 +424,7 @@ pub fn scan_grip_rob_model() -> (
                 "true",
                 // planner actions
                 vec!(
-                    format!("var: gantry_command <- {pos}").as_str(),
+                    format!("var:gantry_command <- {pos}").as_str(),
                     "var:gantry_request_trigger <- true"
                 ),
                 //runner actions
@@ -729,7 +730,7 @@ pub fn scan_grip_rob_model() -> (
     ));
 
     // Robot move operations
-    for pos in vec!(
+    for pos in vec![
         "home",
         "toolbox_gripper",
         "toolbox_scanner",
@@ -737,8 +738,8 @@ pub fn scan_grip_rob_model() -> (
         "box_b",
         "item_a",
         "item_b",
-        "agv"
-    ) {
+        "agv",
+    ] {
         operations.push(Operation::new(
             &format!("op_robot_move_to_{}", pos),
             // precondition
@@ -751,7 +752,7 @@ pub fn scan_grip_rob_model() -> (
                 "true",
                 // planner actions
                 vec!(
-                    format!("var: robot_position <- {pos}").as_str(),
+                    format!("var:robot_position <- {pos}").as_str(),
                     "var:robot_command <- move",
                     "var:robot_request_trigger <- true"
                 ),
@@ -766,10 +767,8 @@ pub fn scan_grip_rob_model() -> (
                 // planner guard
                 "true",
                 // runner guard
-                &format!(
-                    "var:robot_request_state == succeeded && var:robot_actual_state == {pos}"
-                )
-                .as_str(),
+                &format!("var:robot_request_state == succeeded && var:robot_actual_state == {pos}")
+                    .as_str(),
                 // "true",
                 // planner actions
                 vec!(
@@ -782,6 +781,111 @@ pub fn scan_grip_rob_model() -> (
                 &state
             ),
         ));
+    }
+
+    let pos = "scanner";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_mount_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_mount_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_mount_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "gripper";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_mount_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_mount_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_mount_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_mount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    // Robot mount tool operations
+    for tool in vec!["scanner", "gripper"] {
+        operations.push(
+            Operation::new(
+                &format!("op_robot_mount_{tool}"), 
+                // precondition
+                t!(
+                    // name
+                    &format!("start_robot_mount_{tool}").as_str(),
+                    // planner guard
+                    &format!("var:robot_request_trigger == false && var:robot_request_state == initial && var:robot_actual_state == toolbox_{tool} && var:mounted == none").as_str(),
+                    // runner guard
+                    "true",
+                    // planner actions
+                    vec!("var:robot_command <- mount", "var:robot_request_trigger <- true"),
+                    //runner actions
+                    Vec::<&str>::new(),
+                    &state
+                ),
+                // postcondition
+                t!(
+                    // name
+                    &format!("complete_robot_mount_{tool}").as_str(),
+                    // planner guard
+                    &format!("var:robot_request_state == succeeded").as_str(),
+                    // runner guard
+                    "true",
+                    // planner actions
+                    vec!("var:robot_request_trigger <- false", "var:robot_request_state <- initial" ,&format!("var:mounted <- {tool}").as_str()),
+                    //runner actions
+                    Vec::<&str>::new(),
+                    &state
+                ),
+            )
+        )
     }
 
     // Define automatic transitions (these transitions will immediatelly

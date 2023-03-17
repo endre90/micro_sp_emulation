@@ -123,10 +123,10 @@ async fn some_random_test_process(
                             (
                                 "runner_goal".to_string(),
                                 vec![
-                                    "var:scanned_a == true", 
-                                    "var:scanned_a == true && var:gripper_actual_state == closed", 
-                                    "var:gripper_actual_state == closed",
-                                    "var:robot_actual_state == agv"
+                                    // "var:scanned_a == true", 
+                                    // "var:scanned_a == true && var:gripper_actual_state == closed", 
+                                    // "var:gripper_actual_state == closed",
+                                    "var:robot_actual_state == agv && var:mounted == gripper"
                                     ]
                                     .choose(&mut rand::thread_rng())
                                     .unwrap()
@@ -255,17 +255,17 @@ async fn some_random_test_process(
         }
     });
     let total = (nr_completed + nr_disabled + nr_executing + nr_failed + nr_timedout + nr_of_taken_autos) as f32/((5.0*nr_of_operations as f32) + nr_of_autos);
-    println!("=====================================");
+    println!("============================================");
     // println!("CSBM-IAS report: {:.2}%", total);
-    println!("Coverabilty report: CSBM-IAS: {:.2}%", total*100.0);
-    println!("=====================================");
-    println!("Visited disabled state: {} out of {}", nr_disabled, nr_of_operations);
-    println!("Visited executing state: {} out of {}", nr_executing, nr_of_operations);
-    println!("Visited failed state: {} out of {}", nr_failed, nr_of_operations);
-    println!("Visited timedout state: {} out of {}", nr_timedout, nr_of_operations);
-    println!("Visited completed state: {} out of {}", nr_completed, nr_of_operations);
-    println!("Automatic transitions taken: {} out of {}", nr_of_taken_autos, nr_of_autos);
-    println!("=====================================");
+    println!("Coverabilty report: CSBM-IAS:...{:.2}%", total*100.0);
+    println!("============================================");
+    println!("Visited disabled state:.........{} out of {}", nr_disabled, nr_of_operations);
+    println!("Visited executing state:........{} out of {}", nr_executing, nr_of_operations);
+    println!("Visited failed state:...........{} out of {}", nr_failed, nr_of_operations);
+    println!("Visited timedout state:.........{} out of {}", nr_timedout, nr_of_operations);
+    println!("Visited completed state:........{} out of {}", nr_completed, nr_of_operations);
+    println!("Automatic transitions taken:....{} out of {}", nr_of_taken_autos, nr_of_autos);
+    println!("============================================");
     Ok(())
 }
 

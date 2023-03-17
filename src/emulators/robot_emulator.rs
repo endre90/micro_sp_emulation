@@ -59,7 +59,7 @@ pub async fn robot_server(
                                 success: true,
                                 info: format!("{cmd} succeeded.").to_string(),
                             };
-                            r2r::log_error!(NODE_ID, "{}", &format!("{cmd} succeeded."));
+                            r2r::log_warn!(NODE_ID, "{}", &format!("{cmd} succeeded."));
                             request
                                 .respond(response)
                                 .expect("Could not send service response.");
