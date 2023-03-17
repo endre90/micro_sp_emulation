@@ -25,14 +25,14 @@ pub fn scan_grip_rob_model() -> (
         vec!("opened", "closed", "gripping", "unknown")
     );
 
-    // Gantry variables
+    // // Gantry variables
     let gantry_request_trigger = bv_estimated!("gantry_request_trigger");
     let gantry_command = v_runner!("gantry_command");
     let fail_counter_gantry = iv_runner!("fail_counter_gantry");
     let gantry_request_state = v_runner!("gantry_request_state");
     let gantry_actual_state = v_estimated!(
         "gantry_actual_state",
-        vec!("box_a", "box_b", "agv", "unknown")
+        vec!("box_a", "agv", "unknown")
     );
 
     // Robot variables
@@ -44,13 +44,13 @@ pub fn scan_grip_rob_model() -> (
     let robot_actual_state = v_estimated!(
         "robot_actual_state",
         vec!(
-            "home",
+            // "home",
             "toolbox_gripper",
             "toolbox_scanner",
             "box_a",
-            "box_b",
+            // "box_b",
             "item_a",
-            "item_b",
+            // "item_b",
             "agv",
             "unknown"
         )
@@ -58,8 +58,10 @@ pub fn scan_grip_rob_model() -> (
 
     // Estimated(memory) variables too keep track of the state
     let scanned_a = bv_estimated!("scanned_a");
-    let scanned_b = bv_estimated!("scanned_b");
+    // let scanned_b = bv_estimated!("scanned_b");
     let mounted = v_estimated!("mounted", vec!("gripper", "scanner", "none"));
+    let item_a_pose = v_estimated!("item_a_pose", vec!("gripper", "box_a", "box_b", "agv", "unknown"));
+    // let item_b_pose = v_estimated!("item_b_pose", vec!("gripper", "box_a", "box_b", "agv", "unknown"));
 
     // Make a state and assign some values to variables
     // (usually, unknown is a safe initial value for measured and command variables)
@@ -71,8 +73,10 @@ pub fn scan_grip_rob_model() -> (
     let state = state.add(assign!(scanner_request_state, "initial".to_spvalue()));
     let state = state.add(assign!(fail_counter_scanner, 0.to_spvalue()));
     let state = state.add(assign!(scanned_a, false.to_spvalue()));
-    let state = state.add(assign!(scanned_b, false.to_spvalue()));
+    // let state = state.add(assign!(scanned_b, false.to_spvalue()));
     let state = state.add(assign!(mounted, "none".to_spvalue()));
+    let state = state.add(assign!(item_a_pose, "box_a".to_spvalue()));
+    // let state = state.add(assign!(item_b_pose, "box_b".to_spvalue()));
 
     // Gripper variables
     let state = state.add(assign!(gripper_request_trigger, false.to_spvalue()));
@@ -100,6 +104,7 @@ pub fn scan_grip_rob_model() -> (
     // included when calling Model::new()...)
     let state = state.add(SPAssignment::new(
         v_runner!("runner_goal"),
+        // "var:item_a_pose == agv".to_spvalue(),
         // "var:robot_actual_state == agv && var:mounted == gripper".to_spvalue(),
         SPValue::Unknown, // now we can inject from the tester
                           // "var:scanned_a == true && var:gripper_actual_state == closed".to_spvalue(),
@@ -163,7 +168,7 @@ pub fn scan_grip_rob_model() -> (
             // name
             &format!("start_scan_box_a").as_str(),
             // planner guard
-            "var:scanner_request_state == initial && var:scanner_request_trigger == false && var:scanned_a == false",
+            "var:scanner_request_state == initial && var:scanner_request_trigger == false && var:scanned_a == false && var:mounted == scanner && var:robot_actual_state == box_a && var:gantry_actual_state == box_a",
             // runner guard
             "true",
             // planner actions
@@ -193,6 +198,60 @@ pub fn scan_grip_rob_model() -> (
         ),
     ));
 
+    // // Scanner operation
+    // let op_scan_box_b = v_runner!("op_scan_box_b");
+    // let timestamp_op_scan_box_b = fv_runner!("timestamp_op_scan_box_b");
+    // let deadline_op_scan_box_b = fv_runner!("deadline_op_scan_box_b");
+    // let timedout_op_scan_box_b = iv_runner!("timedout_op_scan_box_b");
+    // let started_op_scan_box_b = iv_runner!("started_op_scan_box_b");
+    // let completed_op_scan_box_b = iv_runner!("completed_op_scan_box_b");
+    // let disabled_op_scan_box_b = iv_runner!("disabled_op_scan_box_b");
+    // let executing_op_scan_box_b = iv_runner!("executing_op_scan_box_b");
+    // let state = state.add(assign!(op_scan_box_b, "initial".to_spvalue()));
+    // let state = state.add(assign!(timestamp_op_scan_box_b, 0.0.to_spvalue()));
+    // let state = state.add(assign!(deadline_op_scan_box_b, 1.0.to_spvalue()));
+    // let state = state.add(assign!(timedout_op_scan_box_b, 0.to_spvalue()));
+    // let state = state.add(assign!(started_op_scan_box_b, 0.to_spvalue()));
+    // let state = state.add(assign!(completed_op_scan_box_b, 0.to_spvalue()));
+    // let state = state.add(assign!(disabled_op_scan_box_b, 0.to_spvalue()));
+    // let state = state.add(assign!(executing_op_scan_box_b, 0.to_spvalue()));
+    // operations.push(Operation::new(
+    //     &format!("op_scan_box_b"),
+    //     // precondition
+    //     t!(
+    //         // name
+    //         &format!("start_scan_box_b").as_str(),
+    //         // planner guard
+    //         "var:scanner_request_state == initial && var:scanner_request_trigger == false && var:scanned_b == false && var:mounted == scanner && var:robot_actual_state == box_b && var:gantry_actual_state == box_b",
+    //         // runner guard
+    //         "true",
+    //         // planner actions
+    //         vec!("var:scanner_request_trigger <- true"),
+    //         //runner actions
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    //     // postcondition
+    //     t!(
+    //         // name
+    //         &format!("complete_scan_box_b").as_str(),
+    //         // planner guard
+    //         "true",
+    //         // runner guard
+    //         &format!("var:scanner_request_state == succeeded").as_str(),
+    //         // "true",
+    //         // planner actions
+    //         vec!(
+    //             "var:scanner_request_trigger <- false",
+    //             "var:scanner_request_state <- initial",
+    //             &format!("var:scanned_b <- true").as_str()
+    //         ),
+    //         //runner actions
+    //         Vec::<&str>::new(),
+    //         &state
+    //     ),
+    // ));
+
     // Open gripper operation - should fail if it can't open
     let op_open_gripper = v_runner!("op_open_gripper");
     let timestamp_op_open_gripper = fv_runner!("timestamp_op_open_gripper");
@@ -217,7 +276,7 @@ pub fn scan_grip_rob_model() -> (
             // name
             &format!("start_open_gripper").as_str(),
             // planner guard
-            "var:gripper_request_state == initial && var:gripper_request_trigger == false",
+            "var:gripper_request_state == initial && var:gripper_request_trigger == false && var:mounted == gripper",
             // runner guard
             "true",
             // planner actions
@@ -277,7 +336,7 @@ pub fn scan_grip_rob_model() -> (
             // name
             &format!("start_close_gripper").as_str(),
             // planner guard
-            "var:gripper_request_state == initial && var:gripper_request_trigger == false && var:gripper_actual_state == opened",
+            "var:gripper_request_state == initial && var:gripper_request_trigger == false && var:gripper_actual_state == opened && var:mounted == gripper",
             // runner guard
             "true",
             // planner actions
@@ -307,7 +366,7 @@ pub fn scan_grip_rob_model() -> (
         ),
     ));
 
-    // uuuugh hackady hack
+    // // uuuugh hackady hack
     let pos = "box_a";
     let state = state.add(assign!(
         v_runner!(&format!("op_gantry_move_to_{pos}").as_str()),
@@ -342,39 +401,39 @@ pub fn scan_grip_rob_model() -> (
         0.to_spvalue()
     ));
 
-    let pos = "box_b";
-    let state = state.add(assign!(
-        v_runner!(&format!("op_gantry_move_to_{pos}").as_str()),
-        "initial".to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()),
-        0.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()),
-        1.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
+    // let pos = "box_b";
+    // let state = state.add(assign!(
+    //     v_runner!(&format!("op_gantry_move_to_{pos}").as_str()),
+    //     "initial".to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()),
+    //     0.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()),
+    //     1.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
 
     let pos = "agv";
     let state = state.add(assign!(
@@ -411,7 +470,8 @@ pub fn scan_grip_rob_model() -> (
     ));
 
     // Gantry operations
-    for pos in vec!["box_a", "box_b", "agv"] {
+    // for pos in vec!["box_a", "box_b", "agv"] {
+        for pos in vec!["box_a", "agv"] {
         operations.push(Operation::new(
             &format!("op_gantry_move_to_{}", pos),
             // precondition
@@ -457,39 +517,39 @@ pub fn scan_grip_rob_model() -> (
     }
 
     // horrible I should be ashamed
-    let pos = "home";
-    let state = state.add(assign!(
-        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
-        "initial".to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
-        0.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
-        1.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
+    // let pos = "home";
+    // let state = state.add(assign!(
+    //     v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+    //     "initial".to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+    //     0.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+    //     1.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
 
     let pos = "toolbox_gripper";
     let state = state.add(assign!(
@@ -593,39 +653,39 @@ pub fn scan_grip_rob_model() -> (
         0.to_spvalue()
     ));
 
-    let pos = "box_b";
-    let state = state.add(assign!(
-        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
-        "initial".to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
-        0.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
-        1.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
+    // let pos = "box_b";
+    // let state = state.add(assign!(
+    //     v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+    //     "initial".to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+    //     0.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+    //     1.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
 
     let pos = "item_a";
     let state = state.add(assign!(
@@ -661,39 +721,39 @@ pub fn scan_grip_rob_model() -> (
         0.to_spvalue()
     ));
 
-    let pos = "item_b";
-    let state = state.add(assign!(
-        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
-        "initial".to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
-        0.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
-        1.0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
-    let state = state.add(assign!(
-        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
-        0.to_spvalue()
-    ));
+    // let pos = "item_b";
+    // let state = state.add(assign!(
+    //     v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+    //     "initial".to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+    //     0.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+    //     1.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+    //     0.to_spvalue()
+    // ));
 
     let pos = "agv";
     let state = state.add(assign!(
@@ -731,13 +791,13 @@ pub fn scan_grip_rob_model() -> (
 
     // Robot move operations
     for pos in vec![
-        "home",
+        // "home",
         "toolbox_gripper",
         "toolbox_scanner",
         "box_a",
-        "box_b",
+        // "box_b",
         "item_a",
-        "item_b",
+        // "item_b",
         "agv",
     ] {
         operations.push(Operation::new(
@@ -887,6 +947,420 @@ pub fn scan_grip_rob_model() -> (
             )
         )
     }
+
+    let pos = "scanner";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_unmount_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_unmount_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_unmount_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "gripper";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_unmount_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_unmount_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_unmount_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_unmount_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    // Robot unmount tool operations
+    for tool in vec!["scanner", "gripper"] {
+        operations.push(
+            Operation::new(
+                &format!("op_robot_unmount_{tool}"), 
+                // precondition
+                t!(
+                    // name
+                    &format!("start_robot_unmount_{tool}").as_str(),
+                    // planner guard
+                    &format!("var:robot_request_trigger == false && var:robot_request_state == initial && var:robot_actual_state == toolbox_{tool} && var:mounted == {tool}").as_str(),
+                    // runner guard
+                    "true",
+                    // planner actions
+                    vec!("var:robot_command <- unmount", "var:robot_request_trigger <- true"),
+                    //runner actions
+                    Vec::<&str>::new(),
+                    &state
+                ),
+                // postcondition
+                t!(
+                    // name
+                    &format!("complete_robot_unmount_{tool}").as_str(),
+                    // planner guard
+                    &format!("var:robot_request_state == succeeded").as_str(),
+                    // runner guard
+                    "true",
+                    // planner actions
+                    vec!("var:robot_request_trigger <- false", "var:robot_request_state <- initial" ,&format!("var:mounted <- none").as_str()),
+                    //runner actions
+                    Vec::<&str>::new(),
+                    &state
+                ),
+            )
+        )
+    }
+
+    let state = state.add(assign!(
+        v_runner!(&format!("op_pick_a").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_pick_a").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_pick_a").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_pick_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_pick_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_pick_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_pick_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_pick_a").as_str()),
+        0.to_spvalue()
+    ));
+
+    // here we fake the nested actions, where the robot calls the gripper to close
+    // pick item a operation 
+    operations.push(
+        Operation::new(
+            &format!("op_pick_a"), 
+            // precondition
+            t!(
+                // name
+                &format!("start_pick_a").as_str(),
+                // planner guard
+                // maybe for gripper we don't need this: \ && (var:gripper_act != closed || var:gripper_act != gripping) && \
+                &format!("\
+                    var:mounted == gripper && \
+                    var:gripper_actual_state == opened && \
+                    var:gantry_actual_state == var:item_a_pose && \
+                    var:scanned_a == true && \
+                    var:robot_actual_state == var:item_a_pose"
+                    // var:item_a_pose == box_a"
+                ).as_str(),
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:gripper_actual_state <- gripping"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                &format!("complete_pick_a").as_str(),
+                // planner guard
+                &format!("var:gripper_actual_state == gripping").as_str(),
+                // runner guard
+                "true",
+                // &format!("var:gripper_act == gripping").as_str(),
+                // planner actions
+                vec!("var:item_a_pose <- gripper"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        )
+    );
+
+    // let state = state.add(assign!(
+    //     v_runner!(&format!("op_pick_b").as_str()),
+    //     "initial".to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("timestamp_op_pick_b").as_str()),
+    //     0.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("deadline_op_pick_b").as_str()),
+    //     1.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("timedout_op_pick_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("started_op_pick_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("completed_op_pick_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("disabled_op_pick_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("executing_op_pick_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+
+    // // here we fake the nested actions, where the robot calls the gripper to close
+    // // pick item a operation 
+    // operations.push(
+    //     Operation::new(
+    //         &format!("op_pick_b"), 
+    //         // precondition
+    //         t!(
+    //             // name
+    //             &format!("start_pick_b").as_str(),
+    //             // planner guard
+    //             // maybe for gripper we don't need this: \ && (var:gripper_act != closed || var:gripper_act != gripping) && \
+    //             &format!("\
+    //                 var:mounted == gripper && \
+    //                 var:gantry_actual_state == var:item_b_pose && \
+    //                 var:gripper_actual_state == opened && \
+    //                 var:item_a_pose != gripper && \
+    //                 var:scanned_b == true && \
+    //                 var:robot_actual_state == var:item_b_pose"
+    //                 // var:item_a_pose == box_a"
+    //             ).as_str(),
+    //             // runner guard
+    //             "true",
+    //             // planner actions
+    //             vec!("var:gripper_actual_state <- gripping"),
+    //             //runner actions
+    //             Vec::<&str>::new(),
+    //             &state
+    //         ),
+    //         // postcondition
+    //         t!(
+    //             // name
+    //             &format!("complete_pick_b").as_str(),
+    //             // planner guard
+    //             &format!("var:gripper_actual_state == gripping").as_str(),
+    //             // runner guard
+    //             "true",
+    //             // &format!("var:gripper_act == gripping").as_str(),
+    //             // planner actions
+    //             vec!("var:item_b_pose <- gripper"),
+    //             //runner actions
+    //             Vec::<&str>::new(),
+    //             &state
+    //         ),
+    //     )
+    // );
+
+    let state = state.add(assign!(
+        v_runner!(&format!("op_place_a").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_place_a").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_place_a").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_place_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_place_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_place_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_place_a").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_place_a").as_str()),
+        0.to_spvalue()
+    ));
+
+    // here we fake the nested actions, where the robot calls the gripper to close
+    // place item a operation 
+    operations.push(
+        Operation::new(
+            &format!("op_place_a"), 
+            // precondition
+            t!(
+                // name
+                &format!("start_place_a").as_str(),
+                // planner guard
+                &format!("\
+                    var:mounted == gripper && \
+                    var:gripper_actual_state == gripping && \
+                    var:gantry_actual_state == agv && \
+                    var:item_a_pose == gripper && \
+                    var:robot_actual_state == agv"
+                ).as_str(),
+                // runner guard
+                "true",
+                // planner actions
+                vec!("var:gripper_actual_state <- opened"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                &format!("complete_place_a").as_str(),
+                // planner guard
+                &format!("var:gripper_actual_state == opened").as_str(),
+                // runner guard
+                "true",
+                // &format!("var:gripper_act == gripping").as_str(),
+                // planner actions
+                vec!("var:item_a_pose <- agv"),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        )
+    );
+
+    // let state = state.add(assign!(
+    //     v_runner!(&format!("op_place_b").as_str()),
+    //     "initial".to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("timestamp_op_place_b").as_str()),
+    //     0.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     fv_runner!(&format!("deadline_op_place_b").as_str()),
+    //     1.0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("timedout_op_place_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("started_op_place_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("completed_op_place_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("disabled_op_place_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+    // let state = state.add(assign!(
+    //     iv_runner!(&format!("executing_op_place_b").as_str()),
+    //     0.to_spvalue()
+    // ));
+
+    // // here we fake the nested actions, where the robot calls the gripper to close
+    // // place item a operation 
+    // operations.push(
+    //     Operation::new(
+    //         &format!("op_place_b"), 
+    //         // precondition
+    //         t!(
+    //             // name
+    //             &format!("start_place_b").as_str(),
+    //             // planner guard
+    //             &format!("\
+    //                 var:mounted == gripper && \
+    //                 var:gantry_actual_state == agv && \
+    //                 var:gripper_actual_state == gripping && \
+    //                 var:item_b_pose == gripper && \
+    //                 var:robot_actual_state == agv"
+    //             ).as_str(),
+    //             // runner guard
+    //             "true",
+    //             // planner actions
+    //             vec!("var:gripper_actual_state <- opened"),
+    //             //runner actions
+    //             Vec::<&str>::new(),
+    //             &state
+    //         ),
+    //         // postcondition
+    //         t!(
+    //             // name
+    //             &format!("complete_place_a").as_str(),
+    //             // planner guard
+    //             &format!("var:gripper_actual_state == opened").as_str(),
+    //             // runner guard
+    //             "true",
+    //             // &format!("var:gripper_act == gripping").as_str(),
+    //             // planner actions
+    //             vec!("var:item_b_pose <- agv"),
+    //             //runner actions
+    //             Vec::<&str>::new(),
+    //             &state
+    //         ),
+    //     )
+    // );
 
     // Define automatic transitions (these transitions will immediatelly
     // be executed if evaluated to be true)
@@ -1065,7 +1539,7 @@ fn test_operations() {
         model.state.clone(),
         crate::runner::ticker::extract_goal_from_state(&model.state.clone()),
         model.operations.clone(),
-        10,
+        30,
     );
     for p in plan.plan {
         println!("{}", p);
@@ -1073,3 +1547,4 @@ fn test_operations() {
 
     assert!(plan.found);
 }
+

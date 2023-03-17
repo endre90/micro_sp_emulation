@@ -5,6 +5,7 @@ use r2r::std_msgs::msg::String as StringMsg;
 use r2r::{micro_sp_emulation_msgs::srv::SetState, QosProfile};
 use rand::seq::SliceRandom;
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use std::collections::HashMap;
@@ -109,6 +110,7 @@ async fn some_random_test_process(
     shared_state: &Arc<Mutex<HashMap<String, SPValue>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut test_case = 0;
+    let now = Instant::now();
     while test_case < NR_TEST_CASES {
         tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
         let shsl = shared_state.lock().unwrap().clone();
@@ -123,15 +125,54 @@ async fn some_random_test_process(
                             (
                                 "runner_goal".to_string(),
                                 vec![
-                                    // "var:scanned_a == true", 
+                                    "var:scanned_a == true", 
+                                    // "var:scanned_b == true", 
+                                    // "var:scanned_a == true && var:scanned_b == true", 
+                                    "var:gripper_actual_state == closed && var:robot_actual_state == agv",
+                                    // aha ok, then unmount gripper will not be here, so we'll add it later
+                                    // "var:mounted == scanner && var:item_a_pose == gripper",
+                                    "var:item_a_pose == agv && var:gripper_actual_state == box_a",
+                                    // "var:item_b_pose == agv",
+                                    //  && var:item_a_pose == gripper"
+                                    // aha ok, then unmount gripper will not be here, so we'll add it later
                                     // "var:scanned_a == true && var:gripper_actual_state == closed", 
                                     // "var:gripper_actual_state == closed",
-                                    "var:robot_actual_state == agv && var:mounted == gripper"
+                                    // "var:robot_actual_state == agv && var:mounted == gripper"
+                                    "var:item_a_pose == gripper",
+                                    // "var:item_b_pose == gripper"
                                     ]
                                     .choose(&mut rand::thread_rng())
                                     .unwrap()
                                     .to_spvalue(),
                             ),
+                            (
+                                "item_a_pose".to_string(),
+                                vec!["box_a", "box_b", "gripper", "agv"]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            // (
+                            //     "item_b_pose".to_string(),
+                            //     vec!["box_a", "box_b", "gripper", "agv"]
+                            //         .choose(&mut rand::thread_rng())
+                            //         .unwrap()
+                            //         .to_spvalue(),
+                            // ),
+                            (
+                                "scanned_a".to_string(),
+                                vec![false, true]
+                                    .choose(&mut rand::thread_rng())
+                                    .unwrap()
+                                    .to_spvalue(),
+                            ),
+                            // (
+                            //     "scanned_b".to_string(),
+                            //     vec![false, true]
+                            //         .choose(&mut rand::thread_rng())
+                            //         .unwrap()
+                            //         .to_spvalue(),
+                            // ),
                             (
                                 "gripper_actual_state".to_string(),
                                 vec!["opened", "closed", "gripping", "unknown"]
@@ -141,7 +182,7 @@ async fn some_random_test_process(
                             ),
                             (
                                 "gantry_actual_state".to_string(),
-                                vec!["box_a", "box_b", "agv", "unknown"]
+                                vec!["box_a", "agv", "unknown"]
                                     .choose(&mut rand::thread_rng())
                                     .unwrap()
                                     .to_spvalue(),
@@ -149,22 +190,15 @@ async fn some_random_test_process(
                             (
                                 "robot_actual_state".to_string(),
                                 vec!(
-                                    "home",
+                                    // "home",
                                     "toolbox_gripper",
                                     "toolbox_scanner",
                                     "box_a",
-                                    "box_b",
+                                    // "box_b",
                                     "item_a",
-                                    "item_b",
+                                    // "item_b",
                                     "agv"
                                 )
-                                    .choose(&mut rand::thread_rng())
-                                    .unwrap()
-                                    .to_spvalue(),
-                            ),
-                            (
-                                "scanned_a".to_string(),
-                                vec![true, false]
                                     .choose(&mut rand::thread_rng())
                                     .unwrap()
                                     .to_spvalue(),
@@ -258,6 +292,7 @@ async fn some_random_test_process(
     println!("============================================");
     // println!("CSBM-IAS report: {:.2}%", total);
     println!("Coverabilty report: CSBM-IAS:...{:.2}%", total*100.0);
+    println!("Testing duration:...............{:?}", now.elapsed());
     println!("============================================");
     println!("Visited disabled state:.........{} out of {}", nr_disabled, nr_of_operations);
     println!("Visited executing state:........{} out of {}", nr_executing, nr_of_operations);
@@ -266,6 +301,7 @@ async fn some_random_test_process(
     println!("Visited completed state:........{} out of {}", nr_completed, nr_of_operations);
     println!("Automatic transitions taken:....{} out of {}", nr_of_taken_autos, nr_of_autos);
     println!("============================================");
+   
     Ok(())
 }
 

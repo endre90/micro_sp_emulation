@@ -44,7 +44,7 @@ pub async fn gantry_server(
 
                 let delay: u64 = {
                     let mut rng = rand::thread_rng();
-                    rng.gen_range(0..200)
+                    rng.gen_range(0..3000)
                 };
 
                 // simulate random task execution time

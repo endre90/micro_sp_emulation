@@ -59,6 +59,7 @@ pub async fn ticke_the_planner(
                 let new_state = reset_all_operations(&new_state);
                 r2r::log_warn!(node_id, "Re-plan triggered in the following state:");
                 println!("{}", new_state);
+                *shared_state.lock().unwrap() = shsl.update("runner_plan_state", "PLANNING".to_spvalue());
                 let new_plan =
                     bfs_operation_planner(new_state.clone(), goal, model.operations.clone(), 30);
                 match new_plan.found {
