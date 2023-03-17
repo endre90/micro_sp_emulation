@@ -13,7 +13,7 @@ pub async fn gantry_client_ticker(
 ) -> Result<(), Box<dyn std::error::Error>> {
     r2r::log_warn!(node_id, "Waiting for the gantry server...");
     wait_for_server.await?;
-    r2r::log_warn!(node_id, "gantry server available.");
+    r2r::log_warn!(node_id, "Gantry server available.");
 
     loop {
         let shsl = shared_state.lock().unwrap().clone();

@@ -2,6 +2,7 @@ use micro_sp::Model;
 use r2r::micro_sp_emulation_msgs::srv::SetState;
 use r2r::micro_sp_emulation_msgs::srv::TriggerGripper;
 use r2r::micro_sp_emulation_msgs::srv::TriggerGantry;
+use r2r::micro_sp_emulation_msgs::srv::TriggerRobot;
 use r2r::micro_sp_emulation_msgs::srv::TriggerScan;
 use r2r::std_msgs::msg::String;
 use r2r::QosProfile;
@@ -17,6 +18,7 @@ use models::model::*;
 mod runner;
 use runner::gripper_client_ticker::*;
 use runner::scanner_client_ticker::*;
+use runner::robot_client_ticker::*;
 use runner::gantry_client_ticker::*;
 use runner::set_state_server::*;
 use runner::state_publisher::*;
@@ -42,6 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let scanner_client = node.create_client::<TriggerScan::Service>("scanner_service")?;
     let gripper_client = node.create_client::<TriggerGripper::Service>("gripper_service")?;
     let gantry_client = node.create_client::<TriggerGantry::Service>("gantry_service")?;
+    let robot_client = node.create_client::<TriggerRobot::Service>("robot_service")?;
 
     let shared_state_clone = shared_state.clone();
     tokio::task::spawn(async move {
@@ -55,10 +58,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let waiting_for_scanner_server = node.is_available(&scanner_client)?;
     let waiting_for_gripper_server = node.is_available(&gripper_client)?;
     let waiting_for_gantry_server = node.is_available(&gantry_client)?;
+    let waiting_for_robot_server = node.is_available(&robot_client)?;
 
     let scanner_timer = node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
     let gripper_timer = node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
     let gantry_timer = node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
+    let robot_timer = node.create_wall_timer(std::time::Duration::from_millis(TICKER_RATE))?;
 
     let handle = std::thread::spawn(move || loop {
         node.spin_once(std::time::Duration::from_millis(100));
@@ -103,6 +108,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             waiting_for_gantry_server,
             &shared_state_clone,
             gantry_timer,
+            NODE_ID,
+        )
+        .await
+        {
+            Ok(()) => r2r::log_info!(NODE_ID, "Subscriber succeeded."),
+            Err(e) => r2r::log_error!(NODE_ID, "Subscriber failed with: '{}'.", e),
+        };
+    });
+
+    let shared_state_clone = shared_state.clone();
+    tokio::task::spawn(async move {
+        match robot_client_ticker(
+            &robot_client,
+            waiting_for_robot_server,
+            &shared_state_clone,
+            robot_timer,
             NODE_ID,
         )
         .await

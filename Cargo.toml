@@ -37,5 +37,9 @@ name = "gantry_emulator"
 path = "src/emulators/gantry_emulator.rs"
 
 [[bin]]
+name = "robot_emulator"
+path = "src/emulators/robot_emulator.rs"
+
+[[bin]]
 name = "test"
 path = "src/test.rs"

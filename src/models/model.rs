@@ -14,25 +14,52 @@ pub fn scan_grip_rob_model() -> (
     let scanner_request_trigger = bv_estimated!("scanner_request_trigger");
     let fail_counter_scanner = iv_runner!("fail_counter_scanner");
     let scanner_request_state = v_runner!("scanner_request_state");
-    
+
     // Gripper variables
     let gripper_request_trigger = bv_estimated!("gripper_request_trigger");
     let gripper_command = v_runner!("gripper_command");
     let fail_counter_gripper = iv_runner!("fail_counter_gripper");
     let gripper_request_state = v_runner!("gripper_request_state");
-    let gripper_actual_state = v_estimated!("gripper_actual_state", vec!("opened", "closed", "gripping", "unknown"));
+    let gripper_actual_state = v_estimated!(
+        "gripper_actual_state",
+        vec!("opened", "closed", "gripping", "unknown")
+    );
 
     // Gantry variables
     let gantry_request_trigger = bv_estimated!("gantry_request_trigger");
     let gantry_command = v_runner!("gantry_command");
-    let fail_counter_gantry= iv_runner!("fail_counter_gantry");
+    let fail_counter_gantry = iv_runner!("fail_counter_gantry");
     let gantry_request_state = v_runner!("gantry_request_state");
-    let gantry_actual_state = v_estimated!("gantry_actual_state", vec!("box_a", "box_b", "agv", "unknown"));
+    let gantry_actual_state = v_estimated!(
+        "gantry_actual_state",
+        vec!("box_a", "box_b", "agv", "unknown")
+    );
+
+    // Robot variables
+    let robot_request_trigger = bv_estimated!("robot_request_trigger");
+    let robot_command = v_runner!("robot_command");
+    let robot_position = v_runner!("robot_position");
+    let fail_counter_robot = iv_runner!("fail_counter_robot");
+    let robot_request_state = v_runner!("robot_request_state");
+    let robot_actual_state = v_estimated!(
+        "robot_actual_state",
+        vec!(
+            "home",
+            "toolbox_gripper",
+            "toolbox_scanner",
+            "box_a",
+            "box_b",
+            "item_a",
+            "item_b",
+            "agv",
+            "unknown"
+        )
+    );
 
     // Estimated(memory) variables too keep track of the state
     let scanned_a = bv_estimated!("scanned_a");
-    // let scanned_b = bv_estimated!("scanned_b");
-    // let mounted = bv_estimated!("mounted");
+    let scanned_b = bv_estimated!("scanned_b");
+    let mounted = v_estimated!("mounted", vec!("gripper", "scanner", "none"));
 
     // Make a state and assign some values to variables
     // (usually, unknown is a safe initial value for measured and command variables)
@@ -44,6 +71,8 @@ pub fn scan_grip_rob_model() -> (
     let state = state.add(assign!(scanner_request_state, "initial".to_spvalue()));
     let state = state.add(assign!(fail_counter_scanner, 0.to_spvalue()));
     let state = state.add(assign!(scanned_a, false.to_spvalue()));
+    let state = state.add(assign!(scanned_b, false.to_spvalue()));
+    let state = state.add(assign!(mounted, "none".to_spvalue()));
 
     // Gripper variables
     let state = state.add(assign!(gripper_request_trigger, false.to_spvalue()));
@@ -59,12 +88,20 @@ pub fn scan_grip_rob_model() -> (
     let state = state.add(assign!(fail_counter_gantry, 0.to_spvalue()));
     let state = state.add(assign!(gantry_command, "none".to_spvalue()));
 
+    // Robot variables
+    let state = state.add(assign!(robot_request_trigger, false.to_spvalue()));
+    let state = state.add(assign!(robot_request_state, "initial".to_spvalue()));
+    let state = state.add(assign!(robot_actual_state, "unknown".to_spvalue()));
+    let state = state.add(assign!(fail_counter_robot, 0.to_spvalue()));
+    let state = state.add(assign!(robot_command, "none".to_spvalue()));
+    let state = state.add(assign!(robot_position, "unknown".to_spvalue()));
+
     // And some mandatory variables (actually, these should be automatically
     // included when calling Model::new()...)
     let state = state.add(SPAssignment::new(
         v_runner!("runner_goal"),
-        SPValue::Unknown // now we can inject from the tester
-        // "var:scanned_a == true && var:gripper_actual_state == closed".to_spvalue(),
+        SPValue::Unknown, // now we can inject from the tester
+                          // "var:scanned_a == true && var:gripper_actual_state == closed".to_spvalue(),
     ));
     let state = state.add(SPAssignment::new(
         av_runner!("runner_plan"),
@@ -183,7 +220,10 @@ pub fn scan_grip_rob_model() -> (
             // runner guard
             "true",
             // planner actions
-            vec!("var: gripper_command <- open", "var:gripper_request_trigger <- true"),
+            vec!(
+                "var: gripper_command <- open",
+                "var:gripper_request_trigger <- true"
+            ),
             //runner actions
             Vec::<&str>::new(),
             &state
@@ -195,7 +235,10 @@ pub fn scan_grip_rob_model() -> (
             // planner guard
             "true",
             // runner guard
-            &format!("var:gripper_request_state == succeeded && var:gripper_actual_state == opened").as_str(),
+            &format!(
+                "var:gripper_request_state == succeeded && var:gripper_actual_state == opened"
+            )
+            .as_str(),
             // "true",
             // planner actions
             vec!(
@@ -261,42 +304,113 @@ pub fn scan_grip_rob_model() -> (
             Vec::<&str>::new(),
             &state
         ),
-    )); 
+    ));
 
     // uuuugh hackady hack
     let pos = "box_a";
-    let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
-    let state = state.add(assign!(fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()), 0.0.to_spvalue()));
-    let state = state.add(assign!(fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()), 1.0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(
+        v_runner!(&format!("op_gantry_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
 
     let pos = "box_b";
-    let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
-    let state = state.add(assign!(fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()), 0.0.to_spvalue()));
-    let state = state.add(assign!(fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()), 1.0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(
+        v_runner!(&format!("op_gantry_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
 
     let pos = "agv";
-    let state = state.add(assign!(v_runner!(&format!("op_gantry_move_to_{pos}").as_str()), "initial".to_spvalue()));
-    let state = state.add(assign!(fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()), 0.0.to_spvalue()));
-    let state = state.add(assign!(fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()), 1.0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
-    let state = state.add(assign!(iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()), 0.to_spvalue()));
+    let state = state.add(assign!(
+        v_runner!(&format!("op_gantry_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_gantry_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_gantry_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_gantry_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
 
     // Gantry operations
-    for pos in vec!("box_a", "box_b", "agv") {
-        
+    for pos in vec!["box_a", "box_b", "agv"] {
         operations.push(Operation::new(
             &format!("op_gantry_move_to_{}", pos),
             // precondition
@@ -308,7 +422,10 @@ pub fn scan_grip_rob_model() -> (
                 // runner guard
                 "true",
                 // planner actions
-                vec!(format!("var: gantry_command <- {pos}").as_str(), "var:gantry_request_trigger <- true"),
+                vec!(
+                    format!("var: gantry_command <- {pos}").as_str(),
+                    "var:gantry_request_trigger <- true"
+                ),
                 //runner actions
                 Vec::<&str>::new(),
                 &state
@@ -320,7 +437,10 @@ pub fn scan_grip_rob_model() -> (
                 // planner guard
                 "true",
                 // runner guard
-                &format!("var:gantry_request_state == succeeded && var:gantry_actual_state == {pos}").as_str(),
+                &format!(
+                    "var:gantry_request_state == succeeded && var:gantry_actual_state == {pos}"
+                )
+                .as_str(),
                 // "true",
                 // planner actions
                 vec!(
@@ -332,8 +452,337 @@ pub fn scan_grip_rob_model() -> (
                 Vec::<&str>::new(),
                 &state
             ),
-        )); 
-    };
+        ));
+    }
+
+    // horrible I should be ashamed
+    let pos = "home";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "toolbox_gripper";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "toolbox_scanner";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "box_a";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "box_b";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "item_a";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "item_b";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    let pos = "agv";
+    let state = state.add(assign!(
+        v_runner!(&format!("op_robot_move_to_{pos}").as_str()),
+        "initial".to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("timestamp_op_robot_move_to_{pos}").as_str()),
+        0.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        fv_runner!(&format!("deadline_op_robot_move_to_{pos}").as_str()),
+        1.0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("timedout_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("started_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("completed_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("disabled_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+    let state = state.add(assign!(
+        iv_runner!(&format!("executing_op_robot_move_to_{pos}").as_str()),
+        0.to_spvalue()
+    ));
+
+    // Robot move operations
+    for pos in vec!(
+        "home",
+        "toolbox_gripper",
+        "toolbox_scanner",
+        "box_a",
+        "box_b",
+        "item_a",
+        "item_b",
+        "agv"
+    ) {
+        operations.push(Operation::new(
+            &format!("op_robot_move_to_{}", pos),
+            // precondition
+            t!(
+                // name
+                &format!("start_robot_move_to_{}", pos).as_str(),
+                // planner guard
+                "var:robot_request_state == initial && var:robot_request_trigger == false",
+                // runner guard
+                "true",
+                // planner actions
+                vec!(
+                    format!("var: robot_position <- {pos}").as_str(),
+                    "var:robot_command <- move",
+                    "var:robot_request_trigger <- true"
+                ),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+            // postcondition
+            t!(
+                // name
+                &format!("complete_robot_move_to_{}", pos).as_str(),
+                // planner guard
+                "true",
+                // runner guard
+                &format!(
+                    "var:robot_request_state == succeeded && var:robot_actual_state == {pos}"
+                )
+                .as_str(),
+                // "true",
+                // planner actions
+                vec!(
+                    "var:robot_request_trigger <- false",
+                    "var:robot_request_state <- initial",
+                    &format!("var:robot_actual_state <- {pos}")
+                ),
+                //runner actions
+                Vec::<&str>::new(),
+                &state
+            ),
+        ));
+    }
 
     // Define automatic transitions (these transitions will immediatelly
     // be executed if evaluated to be true)
@@ -359,8 +808,7 @@ pub fn scan_grip_rob_model() -> (
             "var:runner_plan <- [unknown]",
             "var:runner_plan_current_step <- [unknown]",
             "var:runner_plan_info <- Waiting_for_the_re_plan",
-            "var:runner_replan <- true"
-            // "var:runner_replan_trigger <- true"
+            "var:runner_replan <- true" // "var:runner_replan_trigger <- true"
         ),
         &state
     ));
@@ -383,14 +831,17 @@ pub fn scan_grip_rob_model() -> (
             "var:runner_plan <- [unknown]",
             "var:runner_plan_current_step <- [unknown]",
             "var:runner_plan_info <- Waiting_for_the_re_plan",
-            "var:runner_replan <- true"
-            // "var:runner_replan_trigger <- true"
+            "var:runner_replan <- true" // "var:runner_replan_trigger <- true"
         ),
         &state
     ));
 
-    let taken_auto_replan_if_gripper_cant_completely_close = iv_runner!("taken_auto_replan_if_gripper_cant_completely_close");
-    let state = state.add(assign!(taken_auto_replan_if_gripper_cant_completely_close, 0.to_spvalue()));
+    let taken_auto_replan_if_gripper_cant_completely_close =
+        iv_runner!("taken_auto_replan_if_gripper_cant_completely_close");
+    let state = state.add(assign!(
+        taken_auto_replan_if_gripper_cant_completely_close,
+        0.to_spvalue()
+    ));
     auto_transitions.push(t!(
         // name
         "replan_if_gripper_cant_completely_close",
@@ -407,14 +858,17 @@ pub fn scan_grip_rob_model() -> (
             "var:runner_plan <- [unknown]",
             "var:runner_plan_current_step <- [unknown]",
             "var:runner_plan_info <- Waiting_for_the_re_plan",
-            "var:runner_replan <- true"
-            // "var:runner_replan_trigger <- true"
+            "var:runner_replan <- true" // "var:runner_replan_trigger <- true"
         ),
         &state
     ));
 
-    let taken_auto_abort_planning_if_scanning_timedout_5_times = iv_runner!("taken_auto_abort_if_scanning_timedout_5_times");
-    let state = state.add(assign!(taken_auto_abort_planning_if_scanning_timedout_5_times, 0.to_spvalue()));
+    let taken_auto_abort_planning_if_scanning_timedout_5_times =
+        iv_runner!("taken_auto_abort_if_scanning_timedout_5_times");
+    let state = state.add(assign!(
+        taken_auto_abort_planning_if_scanning_timedout_5_times,
+        0.to_spvalue()
+    ));
     auto_transitions.push(t!(
         // name
         "abort_if_scanning_timedout_5_times",
@@ -432,8 +886,7 @@ pub fn scan_grip_rob_model() -> (
             "var:runner_plan_state <- aborted",
             "var:runner_replan <- false",
             "var:runner_replanned <- false",
-            "var:timedout_op_scan_box_a <- 1"
-            // "var:runner_replan_trigger <- true"
+            "var:timedout_op_scan_box_a <- 1" // "var:runner_replan_trigger <- true"
         ),
         &state
     ));
@@ -456,13 +909,38 @@ pub fn scan_grip_rob_model() -> (
             "var:runner_plan <- [unknown]",
             "var:runner_plan_current_step <- [unknown]",
             "var:runner_plan_info <- Waiting_for_the_re_plan",
-            "var:runner_replan <- true"
-            // "var:runner_replan_trigger <- true"
+            "var:runner_replan <- true" // "var:runner_replan_trigger <- true"
         ),
         &state
     ));
 
-    let state = state.add(assign!(iv_runner!(&format!("nr_autos").as_str()), (auto_transitions.len() as i32).to_spvalue()));
+    let taken_auto_replan_if_robot_failed = iv_runner!("taken_auto_replan_if_robot_failed");
+    let state = state.add(assign!(taken_auto_replan_if_robot_failed, 0.to_spvalue()));
+    auto_transitions.push(t!(
+        // name
+        "replan_if_robot_failed",
+        // planner guard
+        "var:robot_request_state == failed",
+        // ruuner guard = none
+        "true",
+        // planner actions
+        Vec::<&str>::new(),
+        // runner actions - none
+        vec!(
+            "var:robot_request_state <- initial",
+            "var:robot_request_trigger <- false",
+            "var:runner_plan <- [unknown]",
+            "var:runner_plan_current_step <- [unknown]",
+            "var:runner_plan_info <- Waiting_for_the_re_plan",
+            "var:runner_replan <- true" // "var:runner_replan_trigger <- true"
+        ),
+        &state
+    ));
+
+    let state = state.add(assign!(
+        iv_runner!(&format!("nr_autos").as_str()),
+        (auto_transitions.len() as i32).to_spvalue()
+    ));
 
     (
         "scanner_model".to_string(),
