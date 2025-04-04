@@ -64,6 +64,8 @@ pub async fn spawn_state_publisher(
                         TimeOrUnknown::Time(t_val) => format!("{:?}", t_val.elapsed().unwrap_or_default()),
                         TimeOrUnknown::UNKNOWN => "UNKNOWN".to_string(),
                     }),
+                    SPValue::Map(_) => Value::from("map_hack".to_string()),
+                    SPValue::Transform(_) => Value::from("transform_hack".to_string()),
                 },
             );
         });

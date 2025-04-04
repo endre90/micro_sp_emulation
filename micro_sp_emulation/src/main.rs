@@ -185,7 +185,7 @@ async fn perform_test(
                 "gantry_emulated_failure_cause",
                 vec!["violation", "collision", "detected_drift"].to_spvalue(),
             )
-            .update("minimal_model_goal", goal.to_spvalue())
+            .update("minimal_model_current_goal_predicate", goal.to_spvalue())
             .update("minimal_model_replan_trigger", true.to_spvalue())
             .update("minimal_model_replanned", false.to_spvalue());
 

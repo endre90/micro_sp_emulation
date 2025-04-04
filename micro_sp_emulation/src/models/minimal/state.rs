@@ -1,4 +1,7 @@
+use std::time::SystemTime;
+
 use micro_sp::*;
+use ordered_float::OrderedFloat;
 
 fn generate_basic_variables(name: &str, state: &State) -> State {
     let resource_online = bv!(&&format!("{}_resource_online", name));
@@ -154,6 +157,33 @@ pub fn state() -> State {
     let robot_mounted_checked = bv!("robot_mounted_checked");
     let asdf = bv!("asdf");
     let robot_mounted_one_time_measured = v!("robot_mounted_one_time_measured");
+
+    let test_frame_1 = tfv!("test_frame_1");
+    let state = state.add(assign!(
+        test_frame_1,
+        SPValue::Transform(TransformOrUnknown::Transform(
+            SPTransformStamped { 
+                active: true, 
+                time_stamp: SystemTime::now(), 
+                parent_frame_id: "a".to_string(), 
+                child_frame_id: "b".to_string(), 
+                transform: SPTransform { 
+                    translation: SPTranslation { 
+                        x: OrderedFloat::from(1.23), 
+                        y: OrderedFloat::from(1.23), 
+                        z: OrderedFloat::from(1.23), 
+                    }, 
+                    rotation: SPRotation { 
+                        x: OrderedFloat::from(1.23),  
+                        y: OrderedFloat::from(1.23), 
+                        z: OrderedFloat::from(1.23), 
+                        w: OrderedFloat::from(1.23), 
+                    } 
+                }, 
+                metadata: MapOrUnknown::UNKNOWN 
+            }
+        ))
+    ));
 
     let state = state.add(assign!(
         robot_speed_measured,
