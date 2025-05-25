@@ -35,10 +35,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
 
-    // for s in state.get_all_vars() {
-    //     println!("{}", s.name)
-    // }
-
     let (tx, rx) = mpsc::channel(100); // Experiment with buffer size
     log::info!(target: "micro_sp", "Spawning state manager.");
     tokio::task::spawn(async move { redis_state_manager(rx, state).await.unwrap() });
@@ -132,7 +128,9 @@ async fn perform_test(
 ) -> Result<(), Box<dyn Error>> {
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     log::info!(target: NODE_ID, "Setting goal: var:robot_mounted_estimated == suction_tool");
-    let goal = "var:robot_mounted_estimated == suction_tool";
+    // let goal = "var:robot_mounted_estimated == suction_tool";
+    let goal = "var:blinked == true";
+    // && var:blinked == true
 
     let (response_tx, response_rx) = oneshot::channel();
     command_sender

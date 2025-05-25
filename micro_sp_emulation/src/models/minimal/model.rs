@@ -6,19 +6,119 @@ use micro_sp::*;
 // Scanner: scan item //TODO
 // Camera System: update blue boxes // TODO
 // Robot: move, mount, unmount, pick, place
+// SOP tryout: Before unmounting the tool, blink the gantry indicator 3 times for 1 seconds each
 
-pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
+pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
     let auto_transitions = vec![];
-    let sops = vec![];
+    // let sops = vec![];
     let mut operations = vec![];
+
+    let blink_on = Operation::new(
+        "blink_on",
+        None,
+        Some(2),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            vec![&format!("var:gantry_light_indicator <- true")],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            vec![],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
+        Vec::from([]),
+        Vec::from([]),
+    );
+
+    let blink_off = Operation::new(
+        "blink_off",
+        None,
+        Some(2),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            Vec::<&str>::new(),
+            vec![&format!("var:gantry_light_indicator <- false")],
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            vec![],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
+        Vec::from([]),
+        Vec::from([]),
+    );
+
+    // This is the high level SOP
+    let blinking = Operation::new(
+        "sop_blinking",
+        None,
+        Some(2),
+        Vec::from([Transition::parse(
+            "start_blinking",
+            "var:robot_mounted_estimated == suction_tool",
+            // "true",
+            "true",
+            vec![
+                // should be the way as we control the robot... maybe
+                &format!("var:{sp_id}_sop_request_trigger <- true"),
+                &format!("var:{sp_id}_sop_state <- initial"),
+                &format!("var:{sp_id}_sop_id <- blinker")
+                ],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "complete_blinking",
+            "true",
+            &format!("var:{sp_id}_sop_state == succeeded"),
+            vec!(&format!("var:blinked <- true")),
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
+        Vec::from([]),
+        Vec::from([]),
+    );
+
+    operations.push(blink_off);
+    operations.push(blink_on);
+    operations.push(blinking);
+
+    let sop = SOPStruct {
+        id: "blinker".to_string(),
+        sop: vec![
+            "operation_blink_on".to_string(),
+            "operation_blink_off".to_string(),
+            "operation_blink_on".to_string(),
+            "operation_blink_off".to_string(),
+            "operation_blink_on".to_string(),
+            "operation_blink_off".to_string(),
+        ],
+    };
+
+    let sops: Vec<SOPStruct> = vec![sop];
 
     operations.push(Operation::new(
         "gantry_lock",
         None,
         Some(3),
-        Vec::from([
-            Transition::parse(
+        Vec::from([Transition::parse(
             "start_gantry_lock",
             "var:gantry_request_state == initial \
                 && var:gantry_request_trigger == false",
@@ -55,7 +155,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([]),
-        Vec::from([])
+        Vec::from([]),
     ));
 
     operations.push(Operation::new(
@@ -99,7 +199,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([]),
-        Vec::from([])
+        Vec::from([]),
     ));
 
     operations.push(Operation::new(
@@ -144,7 +244,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([]),
-        Vec::from([])
+        Vec::from([]),
     ));
 
     for pos in vec!["home", "pipe_blue_box", "plate_pipe_box"] {
@@ -193,7 +293,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([]),
-            Vec::from([])
+            Vec::from([]),
         ));
     }
 
@@ -293,8 +393,8 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //     ));
     // }
 
-                    //     && var:gantry_locked_estimated == true \
-                    // && var:gantry_calibrated_estimated == true",
+    //     && var:gantry_locked_estimated == true \
+    // && var:gantry_calibrated_estimated == true",
 
     for pos in vec![
         "a",
@@ -351,7 +451,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([]),
-            Vec::from([])
+            Vec::from([]),
         ));
     }
 
@@ -399,8 +499,8 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                         "var:robot_request_state <- initial",
                         "var:robot_mounted_checked <- true",
                         &format!("var:robot_mounted_estimated <- var:robot_mounted_one_time_measured"),
-                        &format!("var:{name}_replan_trigger <- true"),
-                        &format!("var:{name}_replanned <- false"),
+                        &format!("var:{sp_id}_replan_trigger <- true"),
+                        &format!("var:{sp_id}_replanned <- false"),
                     ],
                     Vec::<&str>::new(),
                     &state,
@@ -470,7 +570,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([]),
-            Vec::from([])
+            Vec::from([]),
         ));
     }
 
@@ -521,7 +621,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([]),
-            Vec::from([])
+            Vec::from([]),
         ));
     }
 
@@ -571,7 +671,6 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //     Transition::empty(),
     // ));
 
-
     // // reason enough to have automatic operations?
     // auto_transitions.push(Vec::from([Transition::parse(
     //     "start_robot_check_mounted_tool",
@@ -603,18 +702,16 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //     &state
     // ));
 
-
-    // TODO: An automatic transition or operation that automatically updates 
+    // TODO: An automatic transition or operation that automatically updates
     // the positions of boxes every minute or so or when updated_boxes is false
 
-    let model = Model::new(name, auto_transitions, sops, operations);
+    let model = Model::new(sp_id, auto_transitions, sops, operations);
 
     (model, state)
 }
 
 #[test]
 fn test_model() {
-
     let state = crate::models::minimal::state::state();
 
     // Add the variables that keep track of the runner state

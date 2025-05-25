@@ -85,11 +85,11 @@ pub fn state() -> State {
 
     let state = generate_basic_variables("gantry", &state);
 
-
-
     let gantry_command_command = v!("gantry_command_command");
     let gantry_speed_command = fv!("gantry_speed_command");
     let gantry_position_command = v!("gantry_position_command");
+    let gantry_light_indicator = bv!("gantry_light_indicator");
+    let blinked = bv!("blinked");
 
     let state = state.add(assign!(
         gantry_command_command,
@@ -99,6 +99,15 @@ pub fn state() -> State {
     let state = state.add(assign!(
         gantry_position_command,
         SPValue::String(StringOrUnknown::UNKNOWN)
+    ));
+    let state = state.add(assign!(
+        gantry_light_indicator,
+        SPValue::Bool(BoolOrUnknown::UNKNOWN)
+    ));
+
+    let state = state.add(assign!(
+        blinked,
+        SPValue::Bool(BoolOrUnknown::Bool(false))
     ));
 
     // We estimate (memory variables) the following, since we cannot directly measure
@@ -161,29 +170,27 @@ pub fn state() -> State {
     let test_frame_1 = tfv!("test_frame_1");
     let state = state.add(assign!(
         test_frame_1,
-        SPValue::Transform(TransformOrUnknown::Transform(
-            SPTransformStamped { 
-                active_transform: true, 
-                enable_transform: true, 
-                time_stamp: SystemTime::now(), 
-                parent_frame_id: "a".to_string(), 
-                child_frame_id: "b".to_string(), 
-                transform: SPTransform { 
-                    translation: SPTranslation { 
-                        x: OrderedFloat::from(1.23), 
-                        y: OrderedFloat::from(1.23), 
-                        z: OrderedFloat::from(1.23), 
-                    }, 
-                    rotation: SPRotation { 
-                        x: OrderedFloat::from(1.23),  
-                        y: OrderedFloat::from(1.23), 
-                        z: OrderedFloat::from(1.23), 
-                        w: OrderedFloat::from(1.23), 
-                    } 
-                }, 
-                metadata: MapOrUnknown::UNKNOWN 
-            }
-        ))
+        SPValue::Transform(TransformOrUnknown::Transform(SPTransformStamped {
+            active_transform: true,
+            enable_transform: true,
+            time_stamp: SystemTime::now(),
+            parent_frame_id: "a".to_string(),
+            child_frame_id: "b".to_string(),
+            transform: SPTransform {
+                translation: SPTranslation {
+                    x: OrderedFloat::from(1.23),
+                    y: OrderedFloat::from(1.23),
+                    z: OrderedFloat::from(1.23),
+                },
+                rotation: SPRotation {
+                    x: OrderedFloat::from(1.23),
+                    y: OrderedFloat::from(1.23),
+                    z: OrderedFloat::from(1.23),
+                    w: OrderedFloat::from(1.23),
+                }
+            },
+            metadata: MapOrUnknown::UNKNOWN
+        }))
     ));
 
     let state = state.add(assign!(
