@@ -10,16 +10,16 @@ use micro_sp::*;
 pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     let state = state.clone();
     let auto_transitions = vec![];
-    let auto_operations = vec![];
+    let sops = vec![];
     let mut operations = vec![];
 
     operations.push(Operation::new(
-        "op_gantry_lock",
+        "gantry_lock",
         None,
         Some(3),
         Vec::from([
             Transition::parse(
-            "start_op_gantry_lock",
+            "start_gantry_lock",
             "var:gantry_request_state == initial \
                 && var:gantry_request_trigger == false",
             "true",
@@ -31,7 +31,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([Transition::parse(
-            "complete_op_gantry_lock",
+            "complete_gantry_lock",
             "true",
             "var:gantry_request_state == succeeded",
             vec![
@@ -43,7 +43,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([Transition::parse(
-            "fail_op_gantry_lock",
+            "fail_gantry_lock",
             "true",
             "var:gantry_request_state == failed",
             vec![
@@ -59,11 +59,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     ));
 
     operations.push(Operation::new(
-        "op_gantry_unlock",
+        "gantry_unlock",
         None,
         Some(3),
         Vec::from([Transition::parse(
-            "start_op_gantry_unlock",
+            "start_gantry_unlock",
             "var:gantry_request_state == initial \
                 && var:gantry_request_trigger == false",
             "true",
@@ -75,7 +75,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([Transition::parse(
-            "complete_op_gantry_unlock",
+            "complete_gantry_unlock",
             "true",
             "var:gantry_request_state == succeeded",
             vec![
@@ -87,7 +87,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([Transition::parse(
-            "fail_op_gantry_unlock",
+            "fail_gantry_unlock",
             "true",
             "var:gantry_request_state == failed",
             vec![
@@ -103,11 +103,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     ));
 
     operations.push(Operation::new(
-        "op_gantry_calibrate",
+        "gantry_calibrate",
         None,
         Some(3),
         Vec::from([Transition::parse(
-            "start_op_gantry_calibrate",
+            "start_gantry_calibrate",
             "var:gantry_locked_estimated == false \
                 && var:gantry_request_state == initial \
                 && var:gantry_request_trigger == false",
@@ -120,7 +120,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([Transition::parse(
-            "complete_op_gantry_calibrate",
+            "complete_gantry_calibrate",
             "true",
             "var:gantry_request_state == succeeded",
             vec![
@@ -132,7 +132,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([Transition::parse(
-            "fail_op_gantry_calibrate",
+            "fail_gantry_calibrate",
             "true",
             "var:gantry_request_state == failed",
             vec![
@@ -149,11 +149,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
 
     for pos in vec!["home", "pipe_blue_box", "plate_pipe_box"] {
         operations.push(Operation::new(
-            &format!("op_gantry_move_to_{}", pos),
+            &format!("gantry_move_to_{}", pos),
             None,
             Some(3),
             Vec::from([Transition::parse(
-                &format!("start_op_gantry_move_to_{}", pos),
+                &format!("start_gantry_move_to_{}", pos),
                 "var:gantry_request_state == initial \
                     && var:gantry_request_trigger == false \
                     && var:gantry_locked_estimated == false \
@@ -169,7 +169,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("complete_op_gantry_move_to_{}", pos),
+                &format!("complete_gantry_move_to_{}", pos),
                 "true",
                 &format!("var:gantry_request_state == succeeded"),
                 vec![
@@ -181,7 +181,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("fail_op_gantry_move_to_{}", pos),
+                &format!("fail_gantry_move_to_{}", pos),
                 "true",
                 "var:gantry_request_state == failed",
                 vec![
@@ -199,11 +199,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
 
     // for blue_box in vec!["pipe_blue_box", "plate_blue_box"] {
     //     operations.push(Operation::new(
-    //         &format!("op_update_position_for_{}", blue_box),
+    //         &format!("update_position_for_{}", blue_box),
     //         None,
     //         Some(3),
     //         Vec::from([Transition::parse(
-    //             &format!("start_op_update_position_for_{}", blue_box),
+    //             &format!("start_update_position_for_{}", blue_box),
     //             "var:camera_system_request_state == initial \
     //                 && var:camera_system_request_trigger == false",
     //             "true",
@@ -215,7 +215,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //             &state,
     //         )),
     //         Vec::from([Transition::parse(
-    //             &format!("complete_op_update_position_for_{}", blue_box),
+    //             &format!("complete_update_position_for_{}", blue_box),
     //             "true",
     //             &format!("var:camera_system_request_state == succeeded"),
     //             vec![
@@ -227,7 +227,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //             &state,
     //         )),
     //         Vec::from([Transition::parse(
-    //             &format!("fail_op_update_position_for_{}", blue_box),
+    //             &format!("fail_update_position_for_{}", blue_box),
     //             "true",
     //             &format!("var:camera_system_request_state == failed"),
     //             vec![
@@ -244,11 +244,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
 
     // for item in vec!["pipe", "plate"] {
     //     operations.push(Operation::new(
-    //         &format!("op_scan_{}_blue_box", item),
+    //         &format!("scan_{}_blue_box", item),
     //         None,
     //         Some(3),
     //         Vec::from([Transition::parse(
-    //             &format!("start_op_scan_{}_blue_box", item),
+    //             &format!("start_scan_{}_blue_box", item),
     //             &&format!(
     //                 "var:scanner_request_state == initial \
     //                 && var:scanner_request_trigger == false \
@@ -264,7 +264,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //             &state,
     //         ),
     //         Vec::from([Transition::parse(
-    //             &format!("complete_op_scan_{}_blue_box", item),
+    //             &format!("complete_scan_{}_blue_box", item),
     //             "true",
     //             &format!("var:scanner_request_state == succeeded"),
     //             vec![
@@ -277,7 +277,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //             &state,
     //         ),
     //         Vec::from([Transition::parse(
-    //             &format!("fail_op_scan_{}_blue_box", item),
+    //             &format!("fail_scan_{}_blue_box", item),
     //             "true",
     //             &format!("var:scanner_request_state == failed"),
     //             vec![
@@ -307,11 +307,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
         "suction_tool_rack",
     ] {
         operations.push(Operation::new(
-            &format!("op_robot_move_to_{}", pos),
+            &format!("robot_move_to_{}", pos),
             None,
             Some(3),
             Vec::from([Transition::parse(
-                &format!("start_op_robot_move_to_{}", pos),
+                &format!("start_robot_move_to_{}", pos),
                 "var:robot_request_state == initial \
                 && var:robot_request_trigger == false \
                 && var:gantry_locked_estimated == true \
@@ -327,7 +327,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("complete_op_robot_move_to_{}", pos),
+                &format!("complete_robot_move_to_{}", pos),
                 "true",
                 &format!("var:robot_request_state == succeeded"),
                 vec![
@@ -339,7 +339,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("fail_op_robot_move_to_{}", pos),
+                &format!("fail_robot_move_to_{}", pos),
                 "true",
                 &format!("var:robot_request_state == failed"),
                 vec![
@@ -357,11 +357,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
 
     for tool in vec!["gripper_tool", "suction_tool", "none", "unknown"] {
         operations.push(Operation::new(
-            &format!("op_robot_check_for_{tool}_mounted"),
+            &format!("robot_check_for_{tool}_mounted"),
             None,
             Some(3),
             Vec::from([Transition::parse(
-                &format!("start_op_robot_check_for_{tool}_mounted"),
+                &format!("start_robot_check_for_{tool}_mounted"),
                 &format!(
                     "(var:robot_mounted_checked == false || var:robot_mounted_checked == UNKNOWN_bool) \
                     && var:robot_request_state == initial \
@@ -378,7 +378,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
             )]),
             Vec::from([
                 Transition::parse(
-                    &format!("complete_op_robot_check_for_{tool}_mounted"),
+                    &format!("complete_robot_check_for_{tool}_mounted"),
                     "true",
                     &format!("var:robot_request_state == succeeded && var:robot_mounted_one_time_measured == {tool}"),
                     vec![
@@ -391,7 +391,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                     &state,
                 ),
                 Transition::parse(
-                    &format!("complete_op_robot_check_for_{tool}_mounted_2"),
+                    &format!("complete_robot_check_for_{tool}_mounted_2"),
                     "true",
                     &format!("var:robot_request_state == succeeded && var:robot_mounted_one_time_measured != {tool}"),
                     vec![
@@ -407,7 +407,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 )
             ]),
             Vec::from([Transition::parse(
-                &format!("fail_op_robot_check_mounted"),
+                &format!("fail_robot_check_mounted"),
                 "true",
                 &format!("var:robot_request_state == failed"),
                 vec![
@@ -425,11 +425,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
 
     for tool in vec!["gripper_tool", "suction_tool"] {
         operations.push(Operation::new(
-            &format!("op_robot_mount_{}", tool),
+            &format!("robot_mount_{}", tool),
             None,
             Some(3),
             Vec::from([Transition::parse(
-                &format!("start_op_robot_mount_{}", tool),
+                &format!("start_robot_mount_{}", tool),
                 &format!(
                     "var:robot_request_state == initial \
                     && var:robot_request_trigger == false \
@@ -446,7 +446,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("complete_op_robot_mount_{}", tool),
+                &format!("complete_robot_mount_{}", tool),
                 "true",
                 &format!("var:robot_request_state == succeeded"),
                 vec![
@@ -458,7 +458,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("fail_op_robot_mount_{}", tool),
+                &format!("fail_robot_mount_{}", tool),
                 "true",
                 &format!("var:robot_request_state == failed"),
                 vec![
@@ -476,11 +476,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
 
     for tool in vec!["gripper_tool", "suction_tool"] {
         operations.push(Operation::new(
-            &format!("op_robot_unmount_{tool}"),
+            &format!("robot_unmount_{tool}"),
             None,
             Some(3),
             Vec::from([Transition::parse(
-                &format!("start_op_robot_unmount_{tool}"),
+                &format!("start_robot_unmount_{tool}"),
                 &format!(
                     "var:robot_request_state == initial \
                     && var:robot_request_trigger == false \
@@ -497,7 +497,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("complete_op_robot_unmount_{tool}"),
+                &format!("complete_robot_unmount_{tool}"),
                 "true",
                 &format!("var:robot_request_state == succeeded"),
                 vec![
@@ -509,7 +509,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
                 &state,
             )]),
             Vec::from([Transition::parse(
-                &format!("fail_op_robot_unmount_{tool}"),
+                &format!("fail_robot_unmount_{tool}"),
                 "true",
                 &format!("var:robot_request_state == failed"),
                 vec![
@@ -526,11 +526,11 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     }
 
     // auto_operations.push(Operation::new(
-    //     &format!("op_robot_check_mounted"),
+    //     &format!("robot_check_mounted"),
     //     None,
     //     Some(3),
     //     Vec::from([Transition::parse(
-    //         &format!("start_op_robot_check_mounted"),
+    //         &format!("start_robot_check_mounted"),
     //         &format!(
     //             "var:robot_request_state == initial \
     //             && var:robot_request_trigger == false \
@@ -545,7 +545,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //         &state,
     //     ),
     //     Vec::from([Transition::parse(
-    //         &format!("complete_op_robot_check_mounted"),
+    //         &format!("complete_robot_check_mounted"),
     //         "true",
     //         &format!("var:robot_request_state == succeeded"),
     //         vec![
@@ -557,7 +557,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     //         &state,
     //     ),
     //     Vec::from([Transition::parse(
-    //         &format!("fail_op_robot_check_mounted"),
+    //         &format!("fail_robot_check_mounted"),
     //         "true",
     //         &format!("var:robot_request_state == failed"),
     //         vec![
@@ -607,7 +607,7 @@ pub fn minimal_model(name: &str, state: &State) -> (Model, State) {
     // TODO: An automatic transition or operation that automatically updates 
     // the positions of boxes every minute or so or when updated_boxes is false
 
-    let model = Model::new(name, auto_transitions, auto_operations, operations);
+    let model = Model::new(name, auto_transitions, sops, operations);
 
     (model, state)
 }
@@ -624,8 +624,8 @@ fn test_model() {
     let (model, state) = crate::models::minimal::model::minimal_model("minimal", &state);
     // let name = model.clone().name;
 
-    let op_vars = generate_operation_state_variables(&model, false);
-    let state = state.extend(op_vars, true);
+    let vars = generate_operation_state_variables(&model, false);
+    let state = state.extend(vars, true);
 
     for s in &state.state {
         println!("{:?}", s.1);

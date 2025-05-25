@@ -163,7 +163,8 @@ pub fn state() -> State {
         test_frame_1,
         SPValue::Transform(TransformOrUnknown::Transform(
             SPTransformStamped { 
-                active: true, 
+                active_transform: true, 
+                enable_transform: true, 
                 time_stamp: SystemTime::now(), 
                 parent_frame_id: "a".to_string(), 
                 child_frame_id: "b".to_string(), 
