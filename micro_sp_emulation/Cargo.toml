@@ -2,7 +2,7 @@
 name = "micro_sp_emulation"
 version = "0.1.0"
 authors = ["Endre Erős <endre.eros@chalmersindustriteknik.se>"]
-edition = "2021"
+edition = "2024"
 autotests = false
 
 [profile.colcon]

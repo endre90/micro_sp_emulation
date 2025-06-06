@@ -22,6 +22,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "start_blink",
             "true",
             "true",
+            0, 
             vec![&format!("var:gantry_light_indicator <- true")],
             Vec::<&str>::new(),
             &state,
@@ -30,6 +31,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "start_blink",
             "true",
             "true",
+            0, 
             vec![],
             Vec::<&str>::new(),
             &state,
@@ -47,6 +49,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "start_blink",
             "true",
             "true",
+            0, 
             Vec::<&str>::new(),
             vec![&format!("var:gantry_light_indicator <- false")],
             &state,
@@ -55,6 +58,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "start_blink",
             "true",
             "true",
+            0, 
             vec![],
             Vec::<&str>::new(),
             &state,
@@ -65,15 +69,15 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
     );
 
     // This is the high level SOP
-    let blinking = Operation::new(
+    let sop_blinking = Operation::new(
         "sop_blinking",
         None,
         Some(2),
         Vec::from([Transition::parse(
             "start_blinking",
             "var:robot_mounted_estimated == suction_tool",
-            // "true",
             "true",
+            0, 
             vec![
                 // should be the way as we control the robot... maybe
                 &format!("var:{sp_id}_sop_request_trigger <- true"),
@@ -87,6 +91,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "complete_blinking",
             "true",
             &format!("var:{sp_id}_sop_state == succeeded"),
+            0, 
             vec!(&format!("var:blinked <- true")),
             Vec::<&str>::new(),
             &state,
@@ -98,7 +103,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
 
     operations.push(blink_off);
     operations.push(blink_on);
-    operations.push(blinking);
+    operations.push(sop_blinking);
 
     let sop = SOPStruct {
         id: "blinker".to_string(),
@@ -123,6 +128,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "var:gantry_request_state == initial \
                 && var:gantry_request_trigger == false",
             "true",
+            0, 
             vec![
                 &format!("var:gantry_command_command <- lock"),
                 "var:gantry_request_trigger <- true",
@@ -134,6 +140,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "complete_gantry_lock",
             "true",
             "var:gantry_request_state == succeeded",
+            0, 
             vec![
                 "var:gantry_request_trigger <- false",
                 "var:gantry_request_state <- initial",
@@ -146,6 +153,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "fail_gantry_lock",
             "true",
             "var:gantry_request_state == failed",
+            0, 
             vec![
                 "var:gantry_request_trigger <- false",
                 "var:gantry_request_state <- initial",
@@ -167,6 +175,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "var:gantry_request_state == initial \
                 && var:gantry_request_trigger == false",
             "true",
+            0, 
             vec![
                 &format!("var:gantry_command_command <- unlock"),
                 "var:gantry_request_trigger <- true",
@@ -178,6 +187,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "complete_gantry_unlock",
             "true",
             "var:gantry_request_state == succeeded",
+            0, 
             vec![
                 "var:gantry_request_trigger <- false",
                 "var:gantry_request_state <- initial",
@@ -190,6 +200,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "fail_gantry_unlock",
             "true",
             "var:gantry_request_state == failed",
+            0, 
             vec![
                 "var:gantry_request_trigger <- false",
                 "var:gantry_request_state <- initial",
@@ -212,6 +223,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 && var:gantry_request_state == initial \
                 && var:gantry_request_trigger == false",
             "true",
+            0, 
             vec![
                 &format!("var:gantry_command_command <- calibrate"),
                 "var:gantry_request_trigger <- true",
@@ -223,6 +235,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "complete_gantry_calibrate",
             "true",
             "var:gantry_request_state == succeeded",
+            0, 
             vec![
                 "var:gantry_request_trigger <- false",
                 "var:gantry_request_state <- initial",
@@ -235,6 +248,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             "fail_gantry_calibrate",
             "true",
             "var:gantry_request_state == failed",
+            0, 
             vec![
                 "var:gantry_request_trigger <- false",
                 "var:gantry_request_state <- initial",
@@ -259,6 +273,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                     && var:gantry_locked_estimated == false \
                     && var:gantry_calibrated_estimated == true",
                 "true",
+                0, 
                 vec![
                     &format!("var:gantry_command_command <- move"),
                     &format!("var:gantry_position_command <- {pos}"),
@@ -272,6 +287,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("complete_gantry_move_to_{}", pos),
                 "true",
                 &format!("var:gantry_request_state == succeeded"),
+                0, 
                 vec![
                     "var:gantry_request_trigger <- false",
                     "var:gantry_request_state <- initial",
@@ -284,6 +300,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("fail_gantry_move_to_{}", pos),
                 "true",
                 "var:gantry_request_state == failed",
+                0, 
                 vec![
                     "var:gantry_request_trigger <- false",
                     "var:gantry_request_state <- initial",
@@ -417,6 +434,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 && var:gantry_locked_estimated == true \
                 && var:gantry_calibrated_estimated == true",
                 "true",
+                0, 
                 vec![
                     &format!("var:robot_command_command <- move"),
                     &format!("var:robot_position_command <- {pos}"),
@@ -430,6 +448,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("complete_robot_move_to_{}", pos),
                 "true",
                 &format!("var:robot_request_state == succeeded"),
+                0, 
                 vec![
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",
@@ -442,6 +461,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("fail_robot_move_to_{}", pos),
                 "true",
                 &format!("var:robot_request_state == failed"),
+                0, 
                 vec![
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",
@@ -469,6 +489,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                     && var:robot_mounted_estimated == UNKNOWN_string"
                 ),
                 "true",
+                0, 
                 vec![
                     &format!("var:robot_command_command <- check_mounted_tool"),
                     "var:robot_request_trigger <- true",
@@ -481,6 +502,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                     &format!("complete_robot_check_for_{tool}_mounted"),
                     "true",
                     &format!("var:robot_request_state == succeeded && var:robot_mounted_one_time_measured == {tool}"),
+                    0, 
                     vec![
                         "var:robot_request_trigger <- false",
                         "var:robot_request_state <- initial",
@@ -494,6 +516,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                     &format!("complete_robot_check_for_{tool}_mounted_2"),
                     "true",
                     &format!("var:robot_request_state == succeeded && var:robot_mounted_one_time_measured != {tool}"),
+                    0, 
                     vec![
                         "var:robot_request_trigger <- false",
                         "var:robot_request_state <- initial",
@@ -510,6 +533,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("fail_robot_check_mounted"),
                 "true",
                 &format!("var:robot_request_state == failed"),
+                0, 
                 vec![
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",
@@ -538,6 +562,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                     && var:gantry_locked_estimated == true",
                 ),
                 "true",
+                0, 
                 vec![
                     &format!("var:robot_command_command <- mount"),
                     "var:robot_request_trigger <- true",
@@ -549,6 +574,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("complete_robot_mount_{}", tool),
                 "true",
                 &format!("var:robot_request_state == succeeded"),
+                0, 
                 vec![
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",
@@ -561,6 +587,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("fail_robot_mount_{}", tool),
                 "true",
                 &format!("var:robot_request_state == failed"),
+                0, 
                 vec![
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",
@@ -589,6 +616,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                     && var:gantry_locked_estimated == true"
                 ),
                 "true",
+                0, 
                 vec![
                     &format!("var:robot_command_command <- unmount"),
                     "var:robot_request_trigger <- true",
@@ -600,6 +628,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("complete_robot_unmount_{tool}"),
                 "true",
                 &format!("var:robot_request_state == succeeded"),
+                0, 
                 vec![
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",
@@ -612,6 +641,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
                 &format!("fail_robot_unmount_{tool}"),
                 "true",
                 &format!("var:robot_request_state == failed"),
+                0, 
                 vec![
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",

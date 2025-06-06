@@ -164,7 +164,6 @@ pub fn state() -> State {
     let robot_position_estimated = v!("robot_position_estimated");
     let robot_mounted_estimated = v!("robot_mounted_estimated"); // gripper, vacuum
     let robot_mounted_checked = bv!("robot_mounted_checked");
-    let asdf = bv!("asdf");
     let robot_mounted_one_time_measured = v!("robot_mounted_one_time_measured");
 
     let test_frame_1 = tfv!("test_frame_1");
@@ -213,7 +212,7 @@ pub fn state() -> State {
         robot_mounted_one_time_measured,
         SPValue::String(StringOrUnknown::UNKNOWN)
     ));
-    let state = state.add(assign!(asdf, SPValue::Bool(BoolOrUnknown::Bool(false))));
+    // let state = state.add(assign!(asdf, SPValue::Bool(BoolOrUnknown::Bool(false))));
 
     // let robot_mode_measured = v!("robot_mode_measured"); // safety_stop, emergency_stop, operational
 
