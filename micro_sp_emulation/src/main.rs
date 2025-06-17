@@ -35,6 +35,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
 
+
+
     let (tx, rx) = mpsc::channel(100); // Experiment with buffer size
     log::info!(target: "micro_sp", "Spawning state manager.");
     tokio::task::spawn(async move { redis_state_manager(rx, state).await.unwrap() });
@@ -128,9 +130,9 @@ async fn perform_test(
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    log::info!(target: NODE_ID, "Setting goal: var:robot_mounted_estimated == suction_tool");
-    let goal = "var:robot_mounted_estimated == suction_tool";
-    // let goal = "var:blinked == true";
+    // log::info!(target: NODE_ID, "Setting goal: var:robot_mounted_estimated == suction_tool");
+    // let goal = "var:robot_mounted_estimated == suction_tool";
+    let goal = "var:blinked == true";
     // && var:blinked == true
 
     let (response_tx, response_rx) = oneshot::channel();
@@ -154,7 +156,7 @@ async fn perform_test(
             .update("gantry_emulate_execution_time", 2.to_spvalue())
             .update("gantry_emulated_execution_time", 10.to_spvalue())
             .update("gantry_emulate_failure_rate", 2.to_spvalue())
-            .update("gantry_emulated_failure_rate", 100.to_spvalue())
+            .update("gantry_emulated_failure_rate", 50.to_spvalue())
             .update("gantry_emulate_failure_cause", 2.to_spvalue())
             .update(
                 "gantry_emulated_failure_cause",
@@ -171,9 +173,9 @@ async fn perform_test(
             .update(&format!("{sp_id}_replan_trigger"), true.to_spvalue())
             .update(&format!("{sp_id}_replanned"), false.to_spvalue());
 
-        // let modified_state = state.get_diff_partial_state(&new_state);
+        let modified_state = state.get_diff_partial_state(&new_state);
         command_sender
-            .send(StateManagement::SetPartialState(new_state))
+            .send(StateManagement::SetPartialState(modified_state))
             .await?;
     }
 

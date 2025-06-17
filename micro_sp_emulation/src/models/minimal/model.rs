@@ -15,7 +15,34 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
     let mut operations = vec![];
 
     let blink_on = Operation::new(
-        "blink_on",
+        "blink_on_for_sop",
+        None,
+        Some(2),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            0, 
+            vec![&format!("var:gantry_light_indicator <- true")],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            0, 
+            vec![],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
+        Vec::from([]),
+        Vec::from([]),
+    );
+
+    let blink_on_2 = Operation::new(
+        "blink_on_for_sop_2",
         None,
         Some(2),
         Vec::from([Transition::parse(
@@ -42,7 +69,34 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
     );
 
     let blink_off = Operation::new(
-        "blink_off",
+        "blink_off_for_sop",
+        None,
+        Some(2),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            0, 
+            Vec::<&str>::new(),
+            vec![&format!("var:gantry_light_indicator <- false")],
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "start_blink",
+            "true",
+            "true",
+            0, 
+            vec![],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
+        Vec::from([]),
+        Vec::from([]),
+    );
+
+    let blink_off_2 = Operation::new(
+        "blink_off_for_sop_2",
         None,
         Some(2),
         Vec::from([Transition::parse(
@@ -80,7 +134,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             0, 
             vec![
                 // should be the way as we control the robot... maybe
-                &format!("var:{sp_id}_sop_request_trigger <- true"),
+                &format!("var:{sp_id}_sop_enabled <- true"),
                 &format!("var:{sp_id}_sop_state <- initial"),
                 &format!("var:{sp_id}_sop_id <- blinker")
                 ],
@@ -90,7 +144,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
         Vec::from([Transition::parse(
             "complete_blinking",
             "true",
-            &format!("var:{sp_id}_sop_state == succeeded"),
+            &format!("var:{sp_id}_sop_state == completed"),
             0, 
             vec!(&format!("var:blinked <- true")),
             Vec::<&str>::new(),
@@ -101,20 +155,34 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
         Vec::from([]),
     );
 
-    operations.push(blink_off);
-    operations.push(blink_on);
+    // operations.push(blink_off);
+    // operations.push(blink_on);
     operations.push(sop_blinking);
 
+    // with the old sop runner
+    // let sop = SOPStruct {
+    //     id: "blinker".to_string(),
+    //     sop: vec![
+    //         blink_on.clone(),
+    //         blink_off.clone(),
+    //         blink_on.clone(),
+    //         blink_off.clone(),
+    //         blink_on.clone(),
+    //         blink_off.clone(),
+    //     ],
+    // };
+
+    //new sop runner
     let sop = SOPStruct {
         id: "blinker".to_string(),
-        sop: vec![
-            "operation_blink_on".to_string(),
-            "operation_blink_off".to_string(),
-            "operation_blink_on".to_string(),
-            "operation_blink_off".to_string(),
-            "operation_blink_on".to_string(),
-            "operation_blink_off".to_string(),
-        ],
+        sop: SOP::Sequence(vec!(
+            SOP::Operation(Box::new(blink_on.clone())),
+            SOP::Operation(Box::new(blink_off.clone())),
+            SOP::Operation(Box::new(blink_on.clone())),
+            SOP::Operation(Box::new(blink_off.clone())),
+            SOP::Operation(Box::new(blink_on.clone())),
+            SOP::Operation(Box::new(blink_off.clone())),
+        )),
     };
 
     let sops: Vec<SOPStruct> = vec![sop];
