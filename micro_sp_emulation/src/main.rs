@@ -1,19 +1,15 @@
+use redis::aio::MultiplexedConnection;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
-use redis::aio::MultiplexedConnection;
 
-use r2r::micro_sp_emulation_msgs::srv::{TriggerGantry, TriggerRobot};
 use r2r::QosProfile;
+use r2r::micro_sp_emulation_msgs::srv::{TriggerGantry, TriggerRobot};
 
 use micro_sp::*;
 use micro_sp_emulation::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    // Generates unique IDs
-    // let alphabet: [char; 8] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-    // let sp_id = nanoid::nanoid!(6, &alphabet);
-
     let sp_id = "micro_sp".to_string();
 
     // Enable coverability tracking:
@@ -34,12 +30,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
-
-    // let (tx, rx) = mpsc::channel(100); // Experiment with buffer size
-    // log::info!(target: "micro_sp", "Spawning state manager.");
-    // tokio::task::spawn(async move { redis_state_manager(rx, state).await.unwrap() });
-
-    // tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
 
     log::info!(target: NODE_ID, "Spawning emulators.");
 
@@ -74,11 +64,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let waiting_for_robot = r2r::Node::is_available(&robot_client)?;
 
     let arc_node_clone: Arc<Mutex<r2r::Node>> = arc_node.clone();
-    let handle = std::thread::spawn(move || loop {
-        arc_node_clone
-            .lock()
-            .unwrap()
-            .spin_once(std::time::Duration::from_millis(1000));
+    let handle = std::thread::spawn(move || {
+        loop {
+            arc_node_clone
+                .lock()
+                .unwrap()
+                .spin_once(std::time::Duration::from_millis(1000));
+        }
     });
 
     log::warn!(target: "gantry_interface", "Waiting for the Gantry resource to be online.");
@@ -88,33 +80,35 @@ async fn main() -> Result<(), Box<dyn Error>> {
     log::info!(target: "gantry_interface", "Gantry reource online.");
     log::info!(target: "robot_interface", "Robot reource online.");
 
-    let mut con = get_redis_mpx_connection().await;
-    redis_set_state(&mut con, state).await;
-    let con_clone = con.clone();
+    let connection_manager = ConnectionManager::new().await;
+    redis_set_state(&mut connection_manager.get_connection().await, state).await;
+    let con_arc = Arc::new(connection_manager);
+    let con_clone = con_arc.clone();
     tokio::task::spawn(async move {
-        gantry_client_ticker(&gantry_client, gantry_timer, con_clone)
+        gantry_client_ticker(&gantry_client, gantry_timer, &con_clone)
             .await
             .unwrap()
     });
 
-    let con_clone = con.clone();
+    let con_clone = con_arc.clone();
     tokio::task::spawn(async move {
-        robot_client_ticker(&robot_client, robot_timer, con_clone)
+        robot_client_ticker(&robot_client, robot_timer, &con_clone)
             .await
             .unwrap()
     });
 
     log::info!(target: NODE_ID, "Spawning Micro SP.");
 
-    let con_clone = con.clone();
+    let con_clone = con_arc.clone();
     let sp_id_clone = sp_id.clone();
-    tokio::task::spawn(async move { main_runner(&sp_id_clone, model, con_clone).await });
+    tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
 
     log::info!(target: NODE_ID, "Spawning test task.");
 
-    let con_clone = con.clone();
+    let con_clone = con_arc.clone();
+    let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
-    tokio::task::spawn(async move { perform_test(&sp_id_clone, con_clone).await.unwrap() });
+    tokio::task::spawn(async move { perform_test(&sp_id_clone, con_local).await.unwrap() });
 
     log::info!(target: NODE_ID, "Node started.");
 
@@ -123,10 +117,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn perform_test(
-    sp_id: &str,
-    mut con: MultiplexedConnection,
-) -> Result<(), Box<dyn Error>> {
+async fn perform_test(sp_id: &str, mut con: MultiplexedConnection) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     // log::info!(target: NODE_ID, "Setting goal: var:robot_mounted_estimated == suction_tool");
@@ -139,7 +130,7 @@ async fn perform_test(
             &format!("{}_tester", sp_id),
             &format!("{}_plan_state", sp_id),
         );
-    
+
         if PlanState::from_str(&plan_state) == PlanState::Failed
             || PlanState::from_str(&plan_state) == PlanState::Completed
             || PlanState::from_str(&plan_state) == PlanState::Initial
@@ -166,13 +157,11 @@ async fn perform_test(
                 )
                 .update(&format!("{sp_id}_replan_trigger"), true.to_spvalue())
                 .update(&format!("{sp_id}_replanned"), false.to_spvalue());
-    
+
             let modified_state = state.get_diff_partial_state(&new_state);
             redis_set_state(&mut con, modified_state).await;
         }
     }
-
-   
 
     // r2r::log_warn!(NODE_ID, "All tests are finished. Generating report...");
 
