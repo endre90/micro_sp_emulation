@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{mpsc, oneshot};
+use redis::aio::MultiplexedConnection;
 
 use r2r::micro_sp_emulation_msgs::srv::{TriggerGantry, TriggerRobot};
 use r2r::QosProfile;
@@ -35,11 +35,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
 
-
-
-    let (tx, rx) = mpsc::channel(100); // Experiment with buffer size
-    log::info!(target: "micro_sp", "Spawning state manager.");
-    tokio::task::spawn(async move { redis_state_manager(rx, state).await.unwrap() });
+    // let (tx, rx) = mpsc::channel(100); // Experiment with buffer size
+    // log::info!(target: "micro_sp", "Spawning state manager.");
+    // tokio::task::spawn(async move { redis_state_manager(rx, state).await.unwrap() });
 
     // tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
 
@@ -90,32 +88,33 @@ async fn main() -> Result<(), Box<dyn Error>> {
     log::info!(target: "gantry_interface", "Gantry reource online.");
     log::info!(target: "robot_interface", "Robot reource online.");
 
-    let tx_clone = tx.clone();
+    let mut con = get_redis_mpx_connection().await;
+    redis_set_state(&mut con, state).await;
+    let con_clone = con.clone();
     tokio::task::spawn(async move {
-        gantry_client_ticker(&gantry_client, gantry_timer, tx_clone)
+        gantry_client_ticker(&gantry_client, gantry_timer, con_clone)
             .await
             .unwrap()
     });
 
-    // let arc_node_clone: Arc<Mutex<r2r::Node>> = arc_node.clone();
-    let tx_clone = tx.clone();
+    let con_clone = con.clone();
     tokio::task::spawn(async move {
-        robot_client_ticker(&robot_client, robot_timer, tx_clone)
+        robot_client_ticker(&robot_client, robot_timer, con_clone)
             .await
             .unwrap()
     });
 
     log::info!(target: NODE_ID, "Spawning Micro SP.");
 
-    let tx_clone = tx.clone();
+    let con_clone = con.clone();
     let sp_id_clone = sp_id.clone();
-    tokio::task::spawn(async move { main_runner(&sp_id_clone, model, tx_clone).await });
+    tokio::task::spawn(async move { main_runner(&sp_id_clone, model, con_clone).await });
 
     log::info!(target: NODE_ID, "Spawning test task.");
 
-    let tx_clone = tx.clone();
+    let con_clone = con.clone();
     let sp_id_clone = sp_id.clone();
-    tokio::task::spawn(async move { perform_test(&sp_id_clone, tx_clone).await.unwrap() });
+    tokio::task::spawn(async move { perform_test(&sp_id_clone, con_clone).await.unwrap() });
 
     log::info!(target: NODE_ID, "Node started.");
 
@@ -126,7 +125,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 async fn perform_test(
     sp_id: &str,
-    command_sender: mpsc::Sender<StateManagement>,
+    mut con: MultiplexedConnection,
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -135,49 +134,45 @@ async fn perform_test(
     let goal = "var:blinked == true";
     // && var:blinked == true
 
-    let (response_tx, response_rx) = oneshot::channel();
-    command_sender
-        .send(StateManagement::GetState(response_tx))
-        .await?; // TODO: maybe we can just ask for values from the guard
-    let state = response_rx.await?;
-
-    let plan_state = state.get_string_or_default_to_unknown(
-        &format!("{}_tester", sp_id),
-        &format!("{}_plan_state", sp_id),
-    );
-
-    if PlanState::from_str(&plan_state) == PlanState::Failed
-        || PlanState::from_str(&plan_state) == PlanState::Completed
-        || PlanState::from_str(&plan_state) == PlanState::Initial
-        || PlanState::from_str(&plan_state) == PlanState::UNKNOWN
-    {
-        let new_state = state
-            // Optional to test what happens when... (look in the Emulation msg for details)
-            .update("gantry_emulate_execution_time", 2.to_spvalue())
-            .update("gantry_emulated_execution_time", 10.to_spvalue())
-            .update("gantry_emulate_failure_rate", 2.to_spvalue())
-            .update("gantry_emulated_failure_rate", 50.to_spvalue())
-            .update("gantry_emulate_failure_cause", 2.to_spvalue())
-            .update(
-                "gantry_emulated_failure_cause",
-                vec!["violation", "collision", "detected_drift"].to_spvalue(),
-            )
-            .update(
-                &format!("{sp_id}_current_goal_state"),
-                CurrentGoalState::Initial.to_spvalue(),
-            )
-            .update(
-                &format!("{sp_id}_current_goal_predicate"),
-                goal.to_spvalue(),
-            )
-            .update(&format!("{sp_id}_replan_trigger"), true.to_spvalue())
-            .update(&format!("{sp_id}_replanned"), false.to_spvalue());
-
-        let modified_state = state.get_diff_partial_state(&new_state);
-        command_sender
-            .send(StateManagement::SetPartialState(modified_state))
-            .await?;
+    if let Some(state) = redis_get_full_state(&mut con).await {
+        let plan_state = state.get_string_or_default_to_unknown(
+            &format!("{}_tester", sp_id),
+            &format!("{}_plan_state", sp_id),
+        );
+    
+        if PlanState::from_str(&plan_state) == PlanState::Failed
+            || PlanState::from_str(&plan_state) == PlanState::Completed
+            || PlanState::from_str(&plan_state) == PlanState::Initial
+            || PlanState::from_str(&plan_state) == PlanState::UNKNOWN
+        {
+            let new_state = state
+                // Optional to test what happens when... (look in the Emulation msg for details)
+                .update("gantry_emulate_execution_time", 2.to_spvalue())
+                .update("gantry_emulated_execution_time", 10.to_spvalue())
+                .update("gantry_emulate_failure_rate", 2.to_spvalue())
+                .update("gantry_emulated_failure_rate", 50.to_spvalue())
+                .update("gantry_emulate_failure_cause", 2.to_spvalue())
+                .update(
+                    "gantry_emulated_failure_cause",
+                    vec!["violation", "collision", "detected_drift"].to_spvalue(),
+                )
+                .update(
+                    &format!("{sp_id}_current_goal_state"),
+                    CurrentGoalState::Initial.to_spvalue(),
+                )
+                .update(
+                    &format!("{sp_id}_current_goal_predicate"),
+                    goal.to_spvalue(),
+                )
+                .update(&format!("{sp_id}_replan_trigger"), true.to_spvalue())
+                .update(&format!("{sp_id}_replanned"), false.to_spvalue());
+    
+            let modified_state = state.get_diff_partial_state(&new_state);
+            redis_set_state(&mut con, modified_state).await;
+        }
     }
+
+   
 
     // r2r::log_warn!(NODE_ID, "All tests are finished. Generating report...");
 

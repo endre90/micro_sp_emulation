@@ -41,12 +41,12 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
         Vec::from([]),
     );
 
-    let blink_on_2 = Operation::new(
-        "blink_on_for_sop_2",
+    let blink_red = Operation::new(
+        "blink_red_for_sop",
         None,
         Some(2),
         Vec::from([Transition::parse(
-            "start_blink",
+            "start_blink_red",
             "true",
             "true",
             0, 
@@ -55,7 +55,61 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([Transition::parse(
-            "start_blink",
+            "start_blink_red",
+            "true",
+            "true",
+            0, 
+            vec![],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
+        Vec::from([]),
+        Vec::from([]),
+    );
+
+    let blink_blue = Operation::new(
+        "blink_blue_for_sop",
+        None,
+        Some(2),
+        Vec::from([Transition::parse(
+            "start_blink_blue",
+            "true",
+            "true",
+            0, 
+            vec![&format!("var:gantry_light_indicator <- true")],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "start_blink_blue",
+            "true",
+            "true",
+            0, 
+            vec![],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
+        Vec::from([]),
+        Vec::from([]),
+    );
+
+    let blink_green = Operation::new(
+        "blink_green_for_sop",
+        None,
+        Some(2),
+        Vec::from([Transition::parse(
+            "start_blink_green",
+            "true",
+            "true",
+            0, 
+            vec![&format!("var:gantry_light_indicator <- true")],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "start_blink_green",
             "true",
             "true",
             0, 
@@ -70,33 +124,6 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
 
     let blink_off = Operation::new(
         "blink_off_for_sop",
-        None,
-        Some(2),
-        Vec::from([Transition::parse(
-            "start_blink",
-            "true",
-            "true",
-            0, 
-            Vec::<&str>::new(),
-            vec![&format!("var:gantry_light_indicator <- false")],
-            &state,
-        )]),
-        Vec::from([Transition::parse(
-            "start_blink",
-            "true",
-            "true",
-            0, 
-            vec![],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([]),
-        Vec::from([]),
-        Vec::from([]),
-    );
-
-    let blink_off_2 = Operation::new(
-        "blink_off_for_sop_2",
         None,
         Some(2),
         Vec::from([Transition::parse(
@@ -155,22 +182,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
         Vec::from([]),
     );
 
-    // operations.push(blink_off);
-    // operations.push(blink_on);
     operations.push(sop_blinking);
-
-    // with the old sop runner
-    // let sop = SOPStruct {
-    //     id: "blinker".to_string(),
-    //     sop: vec![
-    //         blink_on.clone(),
-    //         blink_off.clone(),
-    //         blink_on.clone(),
-    //         blink_off.clone(),
-    //         blink_on.clone(),
-    //         blink_off.clone(),
-    //     ],
-    // };
 
     //new sop runner
     let sop = SOPStruct {
@@ -180,6 +192,13 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
             SOP::Operation(Box::new(blink_off.clone())),
             SOP::Operation(Box::new(blink_on.clone())),
             SOP::Operation(Box::new(blink_off.clone())),
+            SOP::Operation(Box::new(blink_on.clone())),
+            SOP::Operation(Box::new(blink_off.clone())),
+            SOP::Parallel(vec![
+                SOP::Operation(Box::new(blink_blue.clone())),
+                SOP::Operation(Box::new(blink_red.clone())),
+                SOP::Operation(Box::new(blink_green.clone()))
+            ]),
             SOP::Operation(Box::new(blink_on.clone())),
             SOP::Operation(Box::new(blink_off.clone())),
         )),
