@@ -83,7 +83,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let connection_manager = ConnectionManager::new().await;
     redis_set_state(&mut connection_manager.get_connection().await, state).await;
     let con_arc = Arc::new(connection_manager);
+
     let con_clone = con_arc.clone();
+    SnapshotManager::new(
+        "/home/endre/Desktop/state_snapshot.json",
+        Arc::clone(&con_clone),
+    )
+    .await;
+
     tokio::task::spawn(async move {
         gantry_client_ticker(&gantry_client, gantry_timer, &con_clone)
             .await
