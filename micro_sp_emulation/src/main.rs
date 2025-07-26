@@ -88,6 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     SnapshotManager::new(
         "/home/endre/Desktop/state_snapshot.json",
         Arc::clone(&con_clone),
+        3000
     )
     .await;
 
