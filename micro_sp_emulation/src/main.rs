@@ -81,7 +81,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     log::info!(target: "robot_interface", "Robot reource online.");
 
     let connection_manager = ConnectionManager::new().await;
-    redis_set_state(&mut connection_manager.get_connection().await, state).await;
+    StateManager::set_state(&mut connection_manager.get_connection().await, &state).await;
     let con_arc = Arc::new(connection_manager);
 
     let con_clone = con_arc.clone();
@@ -133,10 +133,10 @@ async fn perform_test(sp_id: &str, mut con: MultiplexedConnection) -> Result<(),
     let goal = "var:blinked == true";
     // && var:blinked == true
 
-    if let Some(state) = redis_get_full_state(&mut con).await {
+    if let Some(state) = StateManager::get_full_state(&mut con).await {
         let plan_state = state.get_string_or_default_to_unknown(
-            &format!("{}_tester", sp_id),
             &format!("{}_plan_state", sp_id),
+            &format!("{}_emulation_test", sp_id),
         );
 
         if PlanState::from_str(&plan_state) == PlanState::Failed
@@ -167,7 +167,7 @@ async fn perform_test(sp_id: &str, mut con: MultiplexedConnection) -> Result<(),
                 .update(&format!("{sp_id}_replanned"), false.to_spvalue());
 
             let modified_state = state.get_diff_partial_state(&new_state);
-            redis_set_state(&mut con, modified_state).await;
+            StateManager::set_state(&mut con, &modified_state).await;
         }
     }
 

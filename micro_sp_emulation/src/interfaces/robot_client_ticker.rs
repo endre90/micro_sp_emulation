@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use micro_sp::*;
+use micro_sp::{
+    ConnectionManager, ServiceRequestState, StateManager, ToSPValue,
+};
 use r2r::micro_sp_emulation_msgs::msg::Emulation;
 use r2r::micro_sp_emulation_msgs::srv::TriggerRobot;
-use redis::AsyncCommands;
 
 pub async fn robot_client_ticker(
     client: &r2r::Client<TriggerRobot::Service>,
@@ -34,50 +35,48 @@ pub async fn robot_client_ticker(
     .map(|k| k.to_string())
     .collect();
 
+    let mut con = connection_manager.get_connection().await;
     loop {
         timer.tick().await?;
-        let mut con = connection_manager.get_connection().await;
-
-        if let Err(e) = con.set::<_, _, ()>("heartbeat", "alive").await {
-            handle_redis_error(&e, &log_target, connection_manager).await;
+        if let Err(_) = connection_manager.check_redis_health(&log_target).await {
             continue;
         }
-        let state = match redis_get_state_for_keys(&mut con, &keys).await {
+        let state = match StateManager::get_state_for_keys(&mut con, &keys).await {
             Some(s) => s,
             None => continue,
         };
         let mut request_trigger =
-            state.get_bool_or_default_to_false(log_target, "robot_request_trigger");
+            state.get_bool_or_default_to_false( "robot_request_trigger", &log_target);
         let mut request_state =
-            state.get_string_or_default_to_unknown(log_target, "robot_request_state");
+            state.get_string_or_default_to_unknown( "robot_request_state", &log_target);
         let mut total_fail_counter =
-            state.get_int_or_default_to_zero(log_target, "robot_total_fail_counter");
+            state.get_int_or_default_to_zero( "robot_total_fail_counter", &log_target);
         let mut subsequent_fail_counter =
-            state.get_int_or_default_to_zero(log_target, "robot_subsequent_fail_counter");
+            state.get_int_or_default_to_zero( "robot_subsequent_fail_counter", &log_target);
         let robot_command_command =
-            state.get_string_or_default_to_unknown(log_target, "robot_command_command");
-        let robot_speed_command = state.get_float_or_default_to_zero(log_target, "robot_speed_command");
+            state.get_string_or_default_to_unknown( "robot_command_command", &log_target);
+        let robot_speed_command = state.get_float_or_default_to_zero( "robot_speed_command", &log_target);
         let robot_position_command =
-            state.get_string_or_default_to_unknown(log_target, "robot_position_command");
+            state.get_string_or_default_to_unknown( "robot_position_command", &log_target);
         let mut robot_position_estimated =
-            state.get_string_or_default_to_unknown(log_target, "robot_position_estimated");
+            state.get_string_or_default_to_unknown( "robot_position_estimated", &log_target);
         // let mut robot_mounted_estimated =
         //     state.get_or_default_string(target, "robot_mounted_estimated");
         // let mut robot_locked_estimated = state.get_bool(target, "robot_locked_estimated");
         let mut robot_mounted_one_time_measured =
-            state.get_string_or_default_to_unknown(log_target, "robot_mounted_one_time_measured");
+            state.get_string_or_default_to_unknown( "robot_mounted_one_time_measured", &log_target);
         let emulate_execution_time =
-            state.get_int_or_default_to_zero(log_target, "robot_emulate_execution_time");
+            state.get_int_or_default_to_zero( "robot_emulate_execution_time", &log_target);
         let emulated_execution_time =
-            state.get_int_or_default_to_zero(log_target, "robot_emulated_execution_time");
+            state.get_int_or_default_to_zero( "robot_emulated_execution_time", &log_target);
         let emulate_failure_rate =
-            state.get_int_or_default_to_zero(log_target, "robot_emulate_failure_rate");
+            state.get_int_or_default_to_zero( "robot_emulate_failure_rate", &log_target);
         let emulated_failure_rate =
-            state.get_int_or_default_to_zero(log_target, "robot_emulated_failure_rate");
+            state.get_int_or_default_to_zero( "robot_emulated_failure_rate", &log_target);
         let emulate_failure_cause =
-            state.get_int_or_default_to_zero(log_target, "robot_emulate_failure_cause");
+            state.get_int_or_default_to_zero( "robot_emulate_failure_cause", &log_target);
         let emulated_failure_cause_sp_value =
-            state.get_array_or_default_to_empty(log_target, "robot_emulated_failure_cause");
+            state.get_array_or_default_to_empty( "robot_emulated_failure_cause", &log_target);
 
         let emulated_failure_cause: Vec<String> = emulated_failure_cause_sp_value
             .iter()
@@ -244,6 +243,6 @@ pub async fn robot_client_ticker(
             );
 
         let modified_state = state.get_diff_partial_state(&new_state);
-        redis_set_state(&mut con, modified_state).await;
+        StateManager::set_state(&mut con, &modified_state).await;
     }
 }
