@@ -7,7 +7,7 @@ pub use crate::emulators::gantry::*;
 pub use crate::emulators::robot::*;
 
 pub mod model;
-// pub use crate::models::*;
+pub use crate::model::*;
 
 // pub mod utils;
 // pub use crate::utils::state_publisher::*;

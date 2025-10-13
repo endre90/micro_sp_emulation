@@ -118,11 +118,11 @@ pub fn state() -> State {
 
     let state = state.add(assign!(
         gantry_calibrated_estimated,
-        SPValue::Bool(BoolOrUnknown::UNKNOWN)
+        SPValue::Bool(BoolOrUnknown::Bool(false))
     ));
     let state = state.add(assign!(
         gantry_locked_estimated,
-        SPValue::Bool(BoolOrUnknown::UNKNOWN)
+        SPValue::Bool(BoolOrUnknown::Bool(false))
     ));
     let state = state.add(assign!(
         gantry_speed_measured,

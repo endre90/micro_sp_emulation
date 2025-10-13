@@ -358,7 +358,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
     let sops: Vec<SOPStruct> = vec![sop];
 
     operations.push(Operation::new(
-        "gantry_lock",
+        "op_gantry_lock",
         None,
         Some(3),
         false,
@@ -410,7 +410,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
     
 
     operations.push(Operation::new(
-        "gantry_calibrate",
+        "op_gantry_calibrate",
         None,
         Some(3),
         false,
