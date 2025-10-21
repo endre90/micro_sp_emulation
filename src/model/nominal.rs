@@ -2,7 +2,7 @@ use micro_sp::*;
 use std::error::Error;
 use redis::aio::MultiplexedConnection;
 
-pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
+pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
     let auto_transitions = vec![];
     let sops = vec![];
