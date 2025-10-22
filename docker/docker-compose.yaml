@@ -7,26 +7,26 @@ services:
     networks:
       - private-net
 
-  micro_sp_ui:
-    build: ./micro_sp_ui
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 100M
-        reservations:
-          cpus: '0.25'
-          memory: 50M
-    container_name: micro_sp_ui
-    ports:
-      - "8501:8501"
-    depends_on:
-      - redis
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    networks:
-      - private-net
+  # micro_sp_ui:
+  #   build: ./micro_sp_ui
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 100M
+  #       reservations:
+  #         cpus: '0.25'
+  #         memory: 50M
+  #   container_name: micro_sp_ui
+  #   ports:
+  #     - "8501:8501"
+  #   depends_on:
+  #     - redis
+  #   environment:
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   networks:
+  #     - private-net
 
 networks:
   private-net:

@@ -19,6 +19,7 @@ pub fn minimal_model(sp_id: &str, state: &State) -> (Model, State) {
         "blink_on_for_sop",
         None,
         Some(2),
+        None,
         false,
         Vec::from([Transition::parse(
             "start_blink",

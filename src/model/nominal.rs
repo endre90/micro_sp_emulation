@@ -12,6 +12,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         "gantry_unlock",
         None,
         None,
+        None,
         false,
         Vec::from([Transition::parse(
             "start_gantry_unlock",
@@ -46,6 +47,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
 
     operations.push(Operation::new(
         "gantry_lock",
+        None,
         None,
         None,
         false,
@@ -83,6 +85,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
 
     operations.push(Operation::new(
         "gantry_calibrate",
+        None,
         None,
         None,
         false,
@@ -123,7 +126,8 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         operations.push(Operation::new(
             &format!("gantry_move_to_{}", pos),
             None,
-            Some(3),
+            None,
+            None,
             false,
             Vec::from([Transition::parse(
                 &format!("start_gantry_move_to_{}", pos),
@@ -175,6 +179,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("robot_move_to_{}", pos),
             None,
             None,
+            None,
             false,
             Vec::from([Transition::parse(
                 &format!("start_robot_move_to_{}", pos),
@@ -215,6 +220,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     for tool in vec!["gripper_tool", "suction_tool"] {
         operations.push(Operation::new(
             &format!("robot_check_for_{tool}_mounted"),
+            None,
             None,
             None,
             false,
@@ -277,6 +283,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("robot_mount_{}", tool),
             None,
             None,
+            None,
             false,
             Vec::from([Transition::parse(
                 &format!("start_robot_mount_{}", tool),
@@ -318,6 +325,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     for tool in vec!["gripper_tool", "suction_tool"] {
         operations.push(Operation::new(
             &format!("robot_unmount_{tool}"),
+            None,
             None,
             None,
             false,
