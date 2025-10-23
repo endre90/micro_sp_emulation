@@ -8,36 +8,32 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let sops = vec![];
     let mut operations = vec![];
 
-    let timeout = bv!(&&format!("timeout"));
-    let state = state.add(assign!(timeout, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
+    let enabled = bv!(&&format!("enabled"));
+    let state = state.add(assign!(enabled, SPValue::Bool(BoolOrUnknown::Bool(false))));
+
+    let done = bv!(&&format!("done"));
+    let state = state.add(assign!(done, SPValue::Bool(BoolOrUnknown::Bool(false))));
 
     operations.push(Operation::new(
-        &format!("emulate_timeout"),
-        Some(500),
+        &format!("emulate_disabled"),
+        None,
         None,
         None,
         false,
         Vec::from([Transition::parse(
-            &format!("start_sleep"),
-            "var:micro_sp_time_request_state == initial \
-            && var:micro_sp_time_request_trigger == false",
+            &format!("start_disabled"),
             "true",
-            vec![
-                &format!("var:micro_sp_time_request_trigger <- true"),
-                &format!("var:micro_sp_time_duration_ms <- 3000"),
-                &format!("var:micro_sp_time_command <- sleep"),
-            ],
+            "var:enabled == true",
+            vec![],
             Vec::<&str>::new(),
             &state,
         )]),
         Vec::from([Transition::parse(
-            &format!("complete_sleep"),
+            &format!("complete_disabled"),
             "true",
-            &format!("var:micro_sp_time_request_state == succeeded"),
+            "true",
             vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
-                "var:timeout <- false",
+                "var:done <- true"
             ],
             Vec::<&str>::new(),
             &state,
@@ -59,12 +55,12 @@ pub async fn run_emultaion(
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    let goal = "var:timeout == false";
+    let goal = "var:done == true";
 
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let plan_state = state.get_string_or_default_to_unknown(
             &format!("{}_plan_state", sp_id),
-            &format!("{}_emulation_test", sp_id),
+            &format!("{}_disabled_test", sp_id),
         );
 
         if PlanState::from_str(&plan_state) == PlanState::Failed
