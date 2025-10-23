@@ -4,3 +4,4 @@ pub mod timeout;
 pub mod disabled;
 pub mod retries;
 pub mod state;
+pub mod automatic;
