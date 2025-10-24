@@ -32,6 +32,8 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         &state,
     ));
 
+
+
     let model = Model::new(sp_id, auto_transitions, vec![], sops, operations);
 
     (model, state)
