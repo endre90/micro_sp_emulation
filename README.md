@@ -1,5 +1,34 @@
-## A ROS2 emulation example using micro_sp and r2r
+## An emulation example using micro_sp
 
+### Unrelated: getting ROS2 jazzy on ubuntu25.10:
+### 1. Install core build tools and pipx
+sudo apt update
+sudo apt install \
+  cmake \
+  git \
+  python3 \
+  python3-setuptools \
+  python3-pip \
+  pipx \
+  wget
+
+### 2. Install ROS 2 build tools using pipx
+pipx install bloom
+pipx install colcon-common-extensions
+pipx install rosdep
+pipx install vcstool
+
+### 3. Update your shell PATH to find the new commands
+pipx ensurepath
+source ~/.bashrc
+
+### 4. Initialize rosdep
+sudo env "PATH=$PATH" rosdep init
+rosdep update
+rosdep install --from-paths src --ignore-src -y --skip-keys "fastcdr rti-connext-dds-6.0.1 urdfdom_headers python3-vcstool python3-catkin-pkg-modules python3-rosdistro-modules"
+
+
+## Quickstart
 1. Install rust and rust_analyzer for inlay hints (makes modeling easier)
 2. Build with `colcon build` in a workspace to build the custom msgs
 3. Run the example with `cargo run`
