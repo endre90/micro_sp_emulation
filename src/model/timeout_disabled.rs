@@ -11,13 +11,16 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let enabled = bv!(&&format!("enabled"));
     let state = state.add(assign!(enabled, SPValue::Bool(BoolOrUnknown::Bool(false))));
 
+    let timeout = bv!(&&format!("timeout"));
+    let state = state.add(assign!(timeout, SPValue::Bool(BoolOrUnknown::Bool(false))));
+
     let done = bv!(&&format!("done"));
     let state = state.add(assign!(done, SPValue::Bool(BoolOrUnknown::Bool(false))));
 
     operations.push(Operation::new(
-        &format!("emulate_disabled"),
+        &format!("emulate_timeout_disabled"),
         None,
-        None,
+        Some(500),
         None,
         None,
         false,
@@ -38,7 +41,14 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &state,
         )]),
         Vec::from([]),
-        Vec::from([]),
+        Vec::from([Transition::parse(
+            &format!("timeout_sleep"),
+            "true",
+            "true",
+            vec!["var:timeout <- true"],
+            Vec::<&str>::new(),
+            &state,
+        )]),
         Vec::from([]),
         Vec::from([]),
     ));
@@ -89,7 +99,7 @@ pub async fn run_emultaion(
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_disabled() -> Result<(), Box<dyn Error>> {
+async fn test_timeout_disabled() -> Result<(), Box<dyn Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -111,7 +121,7 @@ async fn test_disabled() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = crate::model::disabled::model(&sp_id, &state);
+    let (model, state) = crate::model::timeout_disabled::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -147,29 +157,23 @@ async fn test_disabled() -> Result<(), Box<dyn Error>> {
     let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
     let emulation_handle = tokio::task::spawn(async move {
-        crate::model::disabled::run_emultaion(&sp_id_clone, con_local)
+        crate::model::timeout_disabled::run_emultaion(&sp_id_clone, con_local)
             .await
             .unwrap()
     });
 
     log::info!(target: &log_target, "Test started. Polling for condition...");
 
-    let max_wait = std::time::Duration::from_secs(30);
+    let max_wait = std::time::Duration::from_secs(10);
     let polling_logic = async {
         loop {
             let mut connection = con_arc.get_connection().await;
             match StateManager::get_full_state(&mut connection).await {
-                Some(state) => match state.get_bool_or_unknown(&format!("done"), &log_target) {
+                Some(state) => match state.get_bool_or_unknown(&format!("timeout"), &log_target) {
                     BoolOrUnknown::Bool(true) => {
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                         break;
-                    }
-                    BoolOrUnknown::Bool(false) => {
-                        // Wait a bit before enabling to emulate disabled state
-                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                        StateManager::set_sp_value(&mut connection, "enabled", &true.to_spvalue())
-                            .await;
                     }
                     _ => (),
                 },
@@ -220,15 +224,15 @@ async fn test_disabled() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+---------------------------------------------------\+$",
-                        r"^\| Current: op_emulate_disabled\s*\|$",
-                        r"^\| --------------------\s*\|$",
+                        r"^\+------------------------------------------------------\+$",
+                        r"^\| Current: op_emulate_timeout_disabled\s*\|$",
+                        r"^\| ----------------------------\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Disabling operation\.\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Disabled\s+\] Operation disabled\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Disabled\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+---------------------------------------------------\+$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Disabled\s+\] Timeout for operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Operation timedout\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Operation unrecoverable\.\s*\|$",
+                        r"^\+------------------------------------------------------\+$",
                     ];
 
                     assert_eq!(

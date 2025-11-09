@@ -431,3 +431,185 @@ pub async fn run_emultaion(sp_id: &str, mut con: MultiplexedConnection) -> Resul
 
     Ok(())
 }
+
+
+// #[tokio::test]
+// #[serial_test::serial]
+// async fn test_nominal() -> Result<(), Box<dyn Error>> {
+//     use regex::Regex;
+//     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
+//     use testcontainers_modules::redis::Redis;
+
+//     let _container = Redis::default()
+//         .with_mapped_port(6379, ContainerPort::Tcp(6379))
+//         .start()
+//         .await
+//         .unwrap();
+
+//     let log_target = "micro_sp_emulation::test_timeout_rerties";
+//     micro_sp::initialize_env_logger();
+//     let sp_id = "micro_sp".to_string();
+
+//     let coverability_tracking = false;
+
+//     let state = crate::model::state::state();
+
+//     let runner_vars = generate_runner_state_variables(&sp_id);
+//     let state = state.extend(runner_vars, true);
+
+//     let (model, state) = crate::model::nominal::model(&sp_id, &state);
+
+//     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
+//     let state = state.extend(op_vars, true);
+
+//     let connection_manager = ConnectionManager::new().await;
+//     StateManager::set_state(&mut connection_manager.get_connection().await, &state).await;
+//     let con_arc = std::sync::Arc::new(connection_manager);
+
+//     log::info!(target: &log_target, "Spawning emulators.");
+
+//     let con_clone = con_arc.clone();
+//     let robot_handle = tokio::task::spawn(async move {
+//         crate::emulators::robot::robot_emulator(&con_clone)
+//             .await
+//             .unwrap()
+//     });
+
+//     let con_clone = con_arc.clone();
+//     let gantry_handle = tokio::task::spawn(async move {
+//         crate::emulators::gantry::gantry_emulator(&con_clone)
+//             .await
+//             .unwrap()
+//     });
+
+//     log::info!(target: &log_target, "Spawning Micro SP.");
+//     let con_clone = con_arc.clone();
+//     let sp_id_clone = sp_id.clone();
+//     let sp_handle =
+//         tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
+
+//     log::info!(target: &log_target, "Spawning test task.");
+//     let con_clone = con_arc.clone();
+//     let con_local = con_clone.get_connection().await;
+//     let sp_id_clone = sp_id.clone();
+//     let emulation_handle = tokio::task::spawn(async move {
+//         crate::model::nominal::run_emultaion(&sp_id_clone, con_local)
+//             .await
+//             .unwrap()
+//     });
+
+//     log::info!(target: &log_target, "Test started. Polling for condition...");
+
+//     let max_wait = std::time::Duration::from_secs(30);
+//     let polling_logic = async {
+//         loop {
+//             let mut connection = con_arc.get_connection().await;
+//             match StateManager::get_full_state(&mut connection).await {
+//                 Some(state) => match state.get_string_or_default_to_unknown(&format!("robot_mounted_estimated"), &log_target).as_str() {
+//                     "suction_tool" => {
+//                         // Wait before aborting the handles so that the operation can cycle through all states
+//                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+//                         break;
+//                     }
+//                     _ => (),
+//                 },
+//                 None => log::error!(target: &log_target, "Failed to get full state."),
+//             }
+
+//             tokio::time::sleep(std::time::Duration::from_millis(
+//                 crate::EMULATOR_TICK_INTERVAL,
+//             ))
+//             .await;
+//         }
+//     };
+
+//     if let Err(_) = tokio::time::timeout(max_wait, polling_logic).await {
+//         panic!("Test timed out after {:?} waiting for condition.", max_wait);
+//     }
+
+//     log::info!(target: &log_target, "Condition met. Cleaning up tasks.");
+
+//     robot_handle.abort();
+//     gantry_handle.abort();
+//     sp_handle.abort();
+//     emulation_handle.abort();
+
+//     log::info!(target: &log_target, "Fetching diagnostics trace for assertions.");
+//     let mut connection = con_arc.get_connection().await;
+//     match StateManager::get_sp_value(
+//         &mut connection,
+//         &format!("{}_diagnostics_operations", &sp_id),
+//     )
+//     .await
+//     {
+//         Some(diagnostics_sp_value) => {
+//             if let SPValue::String(StringOrUnknown::String(diagnostics_string)) =
+//                 diagnostics_sp_value
+//             {
+//                 if let Ok(diagnostics) =
+//                     serde_json::from_str::<Vec<Vec<OperationLog>>>(&diagnostics_string)
+//                 {
+//                     let formatted = format_log_rows(&diagnostics);
+//                     println!("{}", formatted);
+
+//                     colored::control::set_override(false);
+//                     let result = format_log_rows(&diagnostics);
+
+//                     colored::control::unset_override();
+
+//                     let result_lines: Vec<&str> = result.trim().lines().collect();
+
+//                     let expected_patterns = vec![
+//                         r"^\+------------------------------------------------------------\+$",
+//                         r"^\| Past -1: op_emulate_timeout_bypass\s*\|$",
+//                         r"^\| --------------------------\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout for operation\.\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Operation timedout\. Bypassing\.\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Operation bypassed\.\s*\|$",
+//                         r"^\+------------------------------------------------------------\+$",
+//                         r"^\+---------------------------------------------------\+$",
+//                         r"^\| Current: op_emulate_timeout_bypass_2\s*\|$",
+//                         r"^\| ----------------------------\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
+//                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
+//                         r"^\+---------------------------------------------------\+$",
+//                     ];
+
+//                     assert_eq!(
+//                         result_lines.len(),
+//                         expected_patterns.len(),
+//                         "Assertion failed: Wrong number of lines.\nActual Output:\n{}",
+//                         result
+//                     );
+
+//                     // Line-by-line regex match
+//                     for (i, (result_line, pattern_str)) in
+//                         result_lines.iter().zip(expected_patterns).enumerate()
+//                     {
+//                         let pattern = Regex::new(pattern_str).unwrap();
+
+//                         assert!(
+//                             pattern.is_match(result_line),
+//                             "Assertion failed: Line {} did not match.\n  Expected pattern: {}\n  Actual line:      {}",
+//                             i + 1,
+//                             pattern_str,
+//                             result_line
+//                         );
+//                     }
+//                 } else {
+//                     assert!(false)
+//                 }
+//             } else {
+//                 assert!(false)
+//             }
+//         }
+//         None => assert!(false),
+//     }
+
+//     log::info!(target: &log_target, "Assertions passed. Test complete.");
+
+//     Ok(())
+// }
