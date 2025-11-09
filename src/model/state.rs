@@ -70,6 +70,14 @@ fn generate_emulation_variables(name: &str, state: &State) -> State {
         SPValue::Array(ArrayOrUnknown::Array(vec![]))
     ));
 
+    let emulate_mounted_tool = bv!(&&format!("{}_emulate_mounted_tool", name));
+    let emulated_mounted_tool = v!(&&format!("{}_emulated_mounted_tool", name));
+    let state = state.add(assign!(emulate_mounted_tool, false.to_spvalue()));
+    let state = state.add(assign!(
+        emulated_mounted_tool,
+        SPValue::String(StringOrUnknown::UNKNOWN)
+    ));
+
     state
 }
 
@@ -105,10 +113,7 @@ pub fn state() -> State {
         SPValue::Bool(BoolOrUnknown::UNKNOWN)
     ));
 
-    let state = state.add(assign!(
-        blinked,
-        SPValue::Bool(BoolOrUnknown::Bool(false))
-    ));
+    let state = state.add(assign!(blinked, SPValue::Bool(BoolOrUnknown::Bool(false))));
 
     // We estimate (memory variables) the following, since we cannot directly measure
     let gantry_speed_measured = fv!("gantry_speed_estimated");

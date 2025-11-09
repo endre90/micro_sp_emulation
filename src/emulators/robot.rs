@@ -17,6 +17,8 @@ pub struct RobotRequest {
     pub emulated_failure_rate: i64,
     pub emulate_failure_cause: i64,
     pub emulated_failure_cause: Vec<String>,
+    pub emulate_mounted_tool: bool,
+    pub emulated_mounted_tool: String,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +52,8 @@ pub async fn robot_emulator(
         "robot_emulated_failure_rate",
         "robot_emulate_failure_cause",
         "robot_emulated_failure_cause",
+        "robot_emulate_mounted_tool",
+        "robot_emulated_mounted_tool",
     ]
     .iter()
     .map(|k| k.to_string())
@@ -83,8 +87,8 @@ pub async fn robot_emulator(
         if request_trigger {
             request_trigger = false;
             if request_state == ServiceRequestState::Initial.to_string() {
-                let emulated_failure_cause_sp_value =
-                    state.get_array_or_default_to_empty("robot_emulated_failure_cause", &log_target);
+                let emulated_failure_cause_sp_value = state
+                    .get_array_or_default_to_empty("robot_emulated_failure_cause", &log_target);
 
                 let emulated_failure_cause: Vec<String> = emulated_failure_cause_sp_value
                     .iter()
@@ -106,6 +110,12 @@ pub async fn robot_emulator(
                         .get_int_or_default_to_zero("robot_emulate_failure_rate", &log_target),
                     emulated_failure_rate: state
                         .get_int_or_default_to_zero("robot_emulated_failure_rate", &log_target),
+                    emulate_mounted_tool: state
+                        .get_bool_or_default_to_false("robot_emulate_mounted_tool", &log_target),
+                    emulated_mounted_tool: state.get_string_or_default_to_unknown(
+                        "robot_emulated_mounted_tool",
+                        &log_target,
+                    ),
                     emulate_failure_cause: state
                         .get_int_or_default_to_zero("robot_emulate_failure_cause", &log_target),
                     emulated_failure_cause,
@@ -173,10 +183,14 @@ pub async fn emulate_robot_operation(request: &RobotRequest) -> RobotResponse {
         "check_mounted_tool" => {
             log::info!(target: "robot_emulator", "Got request to check mounted tool.");
             if !fail {
-                checked_mounted_tool = vec!["gripper_tool", "suction_tool", "none"]
-                    .choose(&mut rand::thread_rng())
-                    .unwrap()
-                    .to_string();
+                if request.emulate_mounted_tool {
+                    checked_mounted_tool = request.emulated_mounted_tool.clone()
+                } else {
+                    checked_mounted_tool = vec!["gripper_tool", "suction_tool", "none"]
+                        .choose(&mut rand::thread_rng())
+                        .unwrap()
+                        .to_string();
+                }
             }
         }
         _ => {
