@@ -12,6 +12,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         "gantry_unlock",
         None,
         None,
+        None, 
         None,
         false,
         Vec::from([Transition::parse(
@@ -49,6 +50,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         "gantry_lock",
         None,
         None,
+        None, 
         None,
         false,
         Vec::from([Transition::parse(
@@ -87,6 +89,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         "gantry_calibrate",
         None,
         None,
+        None, 
         None,
         false,
         Vec::from([Transition::parse(
@@ -127,6 +130,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("gantry_move_to_{}", pos),
             None,
             None,
+            None, 
             None,
             false,
             Vec::from([Transition::parse(
@@ -179,6 +183,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("robot_move_to_{}", pos),
             None,
             None,
+            None, 
             None,
             false,
             Vec::from([Transition::parse(
@@ -222,6 +227,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("robot_check_for_{tool}_mounted"),
             None,
             None,
+            None, 
             None,
             false,
             Vec::from([Transition::parse(
@@ -283,6 +289,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("robot_mount_{}", tool),
             None,
             None,
+            None, 
             None,
             false,
             Vec::from([Transition::parse(
@@ -327,6 +334,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("robot_unmount_{tool}"),
             None,
             None,
+            None, 
             None,
             false,
             Vec::from([Transition::parse(

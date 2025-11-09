@@ -7,6 +7,7 @@ use micro_sp_emulation::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    micro_sp::initialize_env_logger();
     let sp_id = "micro_sp".to_string();
 
     // Enable coverability tracking:
@@ -18,7 +19,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = model::auto_ops::model(&sp_id, &state);
+    let (model, state) = model::timeout::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -46,7 +47,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let con_clone = con_arc.clone();
     let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
-    tokio::task::spawn(async move { model::auto_ops::run_emultaion(&sp_id_clone, con_local).await.unwrap() });
+    tokio::task::spawn(async move { model::timeout::run_emultaion(&sp_id_clone, con_local).await.unwrap() });
 
     log::info!(target: "micro_sp_emulator", "Node started.");
 

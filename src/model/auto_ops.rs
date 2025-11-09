@@ -14,6 +14,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("robot_move_to_{}", pos),
             None,
             None,
+            None, 
             None,
             false,
             Vec::from([Transition::parse(

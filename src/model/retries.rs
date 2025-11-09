@@ -16,6 +16,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     operations.push(Operation::new(
         "gantry_unlock",
         Some(500),
+        None, 
         Some(5), // If there is to be a failure retry, we need a failure transition
         Some(5), // If there is to be a timeout retry, we need a timeout transition
         true, // We can add bypass transitions, but usually not necessary
@@ -84,6 +85,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     operations.push(Operation::new(
         "gantry_calibrate",
         None,
+        None, 
         None,
         None,
         false,

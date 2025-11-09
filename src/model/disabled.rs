@@ -18,6 +18,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         &format!("emulate_disabled"),
         None,
         None,
+        None, 
         None,
         false,
         Vec::from([Transition::parse(
