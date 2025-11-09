@@ -2,6 +2,7 @@
 pub mod nominal;
 pub mod timeout;
 pub mod timeout_retries;
+pub mod timeout_bypass;
 pub mod disabled;
 pub mod retries;
 pub mod state;
