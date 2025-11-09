@@ -94,9 +94,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             &format!("complete_sleep"),
             "true",
             "true",
-            vec![
-                "var:x <- true",
-            ],
+            vec!["var:x <- true"],
             Vec::<&str>::new(),
             &state,
         )]),
@@ -276,7 +274,7 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
 
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
-                   let expected_patterns = vec![
+                    let expected_patterns = vec![
                         r"^\+------------------------------------------------------------\+$",
                         r"^\| Past -1: op_emulate_timeout_bypass\s*\|$",
                         r"^\| --------------------------\s*\|$",
