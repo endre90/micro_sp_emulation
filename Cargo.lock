@@ -1077,7 +1077,7 @@ checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 [[package]]
 name = "micro_sp"
 version = "0.1.0"
-source = "git+https://github.com/endre90/micro_sp?branch=master#811f17acf956cef253e91dcea98e4c31ef200f6c"
+source = "git+https://github.com/endre90/micro_sp?branch=master#61b98de16de5691c70edba048cb45409c468be32"
 dependencies = [
  "async-recursion",
  "chrono",
@@ -1119,6 +1119,9 @@ dependencies = [
  "redis",
  "regex",
  "serde_json",
+ "serial_test",
+ "testcontainers",
+ "testcontainers-modules",
  "tokio",
  "tokio-test",
 ]

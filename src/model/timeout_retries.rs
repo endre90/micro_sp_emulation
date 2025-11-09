@@ -9,14 +9,16 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let mut operations = vec![];
 
     let timeout = bv!(&&format!("timeout"));
+    let x = bv!(&&format!("x"));
     let state = state.add(assign!(timeout, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
+    let state = state.add(assign!(x, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
 
     operations.push(Operation::new(
-        &format!("emulate_timeout"),
+        &format!("emulate_timeout_retries"),
         Some(500),
         None,
         None,
-        None,
+        Some(2),
         false,
         Vec::from([Transition::parse(
             &format!("start_sleep"),
@@ -106,7 +108,7 @@ pub async fn run_emultaion(
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_timeout() -> Result<(), Box<dyn Error>> {
+async fn test_timeout_rerties() -> Result<(), Box<dyn Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -117,7 +119,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
-    let log_target = "micro_sp_emulation::test_timeout";
+    let log_target = "micro_sp_emulation::test_timeout_rerties";
     micro_sp::initialize_env_logger();
     let sp_id = "micro_sp".to_string();
 
@@ -128,7 +130,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = crate::model::timeout::model(&sp_id, &state);
+    let (model, state) = crate::model::timeout_retries::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -164,7 +166,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
     let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
     let emulation_handle = tokio::task::spawn(async move {
-        crate::model::timeout::run_emultaion(&sp_id_clone, con_local)
+        crate::model::timeout_retries::run_emultaion(&sp_id_clone, con_local)
             .await
             .unwrap()
     });
@@ -231,15 +233,21 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Current: op_emulate_timeout\s*\|$",
-                        r"^\| -------------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s*\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s*\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s*\] Timeout for operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s*\] Operation timedout\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s*\] Operation unrecoverable\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
+                        r"^\+-------------------------------------------------------\+$",
+                        r"^\| Current: op_emulate_timeout_retries\s*\|$",
+                        r"^\| ---------------------------\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout for operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Retrying operation \d / \d\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout for operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Retrying operation \d / \d\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout for operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Operation timedout\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Operation unrecoverable\.\s*\|$",
+                        r"^\+-------------------------------------------------------\+$",
                     ];
 
                     assert_eq!(
