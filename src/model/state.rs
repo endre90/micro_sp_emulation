@@ -203,7 +203,7 @@ pub fn state() -> State {
     ));
     let state = state.add(assign!(
         robot_position_estimated,
-        SPValue::String(StringOrUnknown::UNKNOWN)
+        SPValue::String(StringOrUnknown::String("a".to_string()))
     ));
     let state = state.add(assign!(
         robot_mounted_estimated,

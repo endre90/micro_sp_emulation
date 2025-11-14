@@ -437,7 +437,7 @@ pub async fn run_emultaion(sp_id: &str, mut con: MultiplexedConnection) -> Resul
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_nominal() -> Result<(), Box<dyn Error>> {
+async fn test_replan() -> Result<(), Box<dyn Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -448,7 +448,7 @@ async fn test_nominal() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
-    let log_target = "micro_sp_emulation::test_timeout_rerties";
+    let log_target = "micro_sp_emulation::test_replan";
     micro_sp::initialize_env_logger();
     let sp_id = "micro_sp".to_string();
 

@@ -2,60 +2,123 @@ use micro_sp::*;
 use redis::aio::MultiplexedConnection;
 use std::error::Error;
 
+use crate::{DONT_EMULATE_EXECUTION_TIME, EMULATE_EXACT_FAILURE_CAUSE, EMULATE_FAILURE_ALWAYS};
+
 pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
     let auto_transitions = vec![];
     let sops = vec![];
     let mut operations = vec![];
 
-    let timeout = bv!(&&format!("timeout"));
-    let state = state.add(assign!(timeout, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
+    let failed = bv!(&&format!("failed"));
+    let state = state.add(assign!(failed, SPValue::Bool(BoolOrUnknown::Bool(false))));
+
+    let bypassed = bv!(&&format!("bypassed"));
+    let state = state.add(assign!(bypassed, SPValue::Bool(BoolOrUnknown::Bool(false))));
 
     operations.push(Operation::new(
-        &format!("emulate_timeout"),
-        Some(500),
+        "gantry_unlock",
         None,
         None,
-        None,
-        false,
+        None, // If there is to be a failure retry, we need a failure transition
+        None, // If there is to be a timeout retry, we need a timeout transition
+        true, // We can add bypass transitions, but usually not necessary to bypass
         Vec::from([Transition::parse(
-            &format!("start_sleep"),
-            "var:micro_sp_time_request_state == initial \
-            && var:micro_sp_time_request_trigger == false",
+            "start_gantry_unlock",
+            "var:gantry_request_state == initial \
+                && var:gantry_request_trigger == false",
             "true",
             vec![
-                &format!("var:micro_sp_time_request_trigger <- true"),
-                &format!("var:micro_sp_time_duration_ms <- 3000"),
-                &format!("var:micro_sp_time_command <- sleep"),
+                &format!("var:gantry_command_command <- unlock"),
+                "var:gantry_request_trigger <- true",
             ],
             Vec::<&str>::new(),
             &state,
         )]),
         Vec::from([Transition::parse(
-            &format!("complete_sleep"),
+            "complete_gantry_unlock",
             "true",
-            &format!("var:micro_sp_time_request_state == succeeded"),
+            "var:gantry_request_state == succeeded",
             vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
-                "var:timeout <- false",
+                "var:gantry_request_trigger <- false",
+                "var:gantry_request_state <- initial",
+                "var:gantry_locked_estimated <- false",
+            ],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "failed_gantry_unlock",
+            "true",
+            "var:gantry_request_state == failed",
+            vec![
+                "var:gantry_request_trigger <- false",
+                "var:gantry_request_state <- initial",
             ],
             Vec::<&str>::new(),
             &state,
         )]),
         Vec::from([]),
         Vec::from([Transition::parse(
-            &format!("timeout_sleep"),
+            "bypass_gantry_unlock",
             "true",
             "true",
             vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
-                "var:timeout <- true",
+                "var:gantry_request_trigger <- false",
+                "var:gantry_request_state <- initial",
+                "var:bypassed <- true",
             ],
             Vec::<&str>::new(),
             &state,
         )]),
+        Vec::from([]),
+    ));
+
+    operations.push(Operation::new(
+        "gantry_calibrate",
+        None,
+        None,
+        None,
+        None,
+        false,
+        Vec::from([Transition::parse(
+            "start_gantry_calibrate",
+            "(var:gantry_locked_estimated == false || var:bypassed == true) \
+                && var:gantry_request_state == initial \
+                && var:gantry_request_trigger == false",
+            "true",
+            vec![
+                &format!("var:gantry_command_command <- calibrate"),
+                "var:gantry_request_trigger <- true",
+            ],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "complete_gantry_calibrate",
+            "true",
+            "var:gantry_request_state == succeeded",
+            vec![
+                "var:gantry_request_trigger <- false",
+                "var:gantry_request_state <- initial",
+                "var:gantry_calibrated_estimated <- true",
+            ],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([Transition::parse(
+            "failed_gantry_unlock",
+            "true",
+            "var:gantry_request_state == failed",
+            vec![
+                "var:gantry_request_trigger <- false",
+                "var:gantry_request_state <- initial",
+                "var:failed <- true",
+            ],
+            Vec::<&str>::new(),
+            &state,
+        )]),
+        Vec::from([]),
         Vec::from([]),
         Vec::from([]),
     ));
@@ -71,7 +134,7 @@ pub async fn run_emultaion(
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    let goal = "var:timeout == false";
+    let goal = "var:gantry_calibrated_estimated == true";
 
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let plan_state = state.get_string_or_default_to_unknown(
@@ -85,6 +148,24 @@ pub async fn run_emultaion(
             || PlanState::from_str(&plan_state) == PlanState::UNKNOWN
         {
             let new_state = state
+                // Optional to test what happens when... (look in the Emulation msg for details)
+                .update(
+                    "gantry_emulate_execution_time",
+                    DONT_EMULATE_EXECUTION_TIME.to_spvalue(),
+                )
+                .update(
+                    "gantry_emulate_failure_rate",
+                    EMULATE_FAILURE_ALWAYS.to_spvalue(),
+                )
+                .update(
+                    "gantry_emulate_failure_cause",
+                    EMULATE_EXACT_FAILURE_CAUSE.to_spvalue(),
+                )
+                .update(
+                    "gantry_emulated_failure_cause",
+                    vec!["collision"].to_spvalue(),
+                )
+                .update("gantry_locked_estimated", true.to_spvalue())
                 .update(
                     &format!("{sp_id}_current_goal_state"),
                     CurrentGoalState::Initial.to_spvalue(),
@@ -101,12 +182,17 @@ pub async fn run_emultaion(
         }
     }
 
+    // TODO
+    // Measure operation and plan execution times, and measure total failure rates...
+    // Print out plan done or plan failed when done or failed...
+    // Generate a RUN report contining time, timeouts, failures, recoveries, paths taken, replans, etc.
+
     Ok(())
 }
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_timeout() -> Result<(), Box<dyn Error>> {
+async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -117,7 +203,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
-    let log_target = "micro_sp_emulation::test_timeout";
+    let log_target = "micro_sp_emulation::test_failed_bypass";
     micro_sp::initialize_env_logger();
     let sp_id = "micro_sp".to_string();
 
@@ -128,7 +214,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = crate::model::timeout::model(&sp_id, &state);
+    let (model, state) = crate::model::failed_bypass::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -164,7 +250,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
     let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
     let emulation_handle = tokio::task::spawn(async move {
-        crate::model::timeout::run_emultaion(&sp_id_clone, con_local)
+        crate::model::failed_bypass::run_emultaion(&sp_id_clone, con_local)
             .await
             .unwrap()
     });
@@ -176,7 +262,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
         loop {
             let mut connection = con_arc.get_connection().await;
             match StateManager::get_full_state(&mut connection).await {
-                Some(state) => match state.get_bool_or_unknown(&format!("timeout"), &log_target) {
+                Some(state) => match state.get_bool_or_unknown(&format!("failed"), &log_target) {
                     BoolOrUnknown::Bool(true) => {
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -231,17 +317,25 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Current: op_emulate_timeout\s*\|$",
-                        r"^\| -------------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s*\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s*\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s*\] Timeout for operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s*\] Operation timedout\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s*\] Operation unrecoverable\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
+                        r"^\+----------------------------------------------------------\+$",
+                        r"^\| Past -\d: op_gantry_unlock\s*\|$",
+                        r"^\| -----------------\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Operation failed\. Bypassing\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Operation bypassed\.\s*\|$",
+                        r"^\+----------------------------------------------------------\+$",
+                        r"^\+-----------------------------------------------------------------\+$",
+                        r"^\| Current: op_gantry_calibrate\s*\|$",
+                        r"^\| --------------------\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing operation\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Operation has no more retries left\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Operation unrecoverable\.\s*\|$",
+                        r"^\+-----------------------------------------------------------------\+$",
                     ];
-
                     assert_eq!(
                         result_lines.len(),
                         expected_patterns.len(),
