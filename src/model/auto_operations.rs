@@ -25,7 +25,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             Vec::from([Transition::parse(
                 &format!("start_robot_move_to_{pos}"),
                 &format!(
-                "var:counter != 5 \
+                "var:counter < 5 \
                 && var:robot_request_state == initial \
                 && var:robot_request_trigger == false \
                 && var:robot_position_estimated != {pos}"
@@ -76,20 +76,16 @@ pub async fn run_emultaion(
         let new_state = state
             // Optional to test what happens when... (look in the Emulation msg for details)
             .update(
-                "gantry_emulate_execution_time",
+                "robot_emulate_execution_time",
                 EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
             )
             .update(
-                "gantry_emulated_execution_time",
+                "robot_emulated_execution_time",
                 500.to_spvalue(),
             )
             .update(
-                "gantry_emulate_failure_rate",
+                "robot_emulate_failure_rate",
                 DONT_EMULATE_FAILURE.to_spvalue(),
-            )
-            .update(
-                "gantry_emulated_failure_cause",
-                vec!["collision"].to_spvalue(),
             );
 
         let modified_state = state.get_diff_partial_state(&new_state);
@@ -176,7 +172,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
             let mut connection = con_arc.get_connection().await;
             match StateManager::get_full_state(&mut connection).await {
                 Some(state) => match state.get_int_or_unknown(&format!("counter"), &log_target) {
-                    IntOrUnknown::Int64(3) => {
+                    IntOrUnknown::Int64(5) => {
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                         break;
