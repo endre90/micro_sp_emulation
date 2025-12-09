@@ -154,26 +154,26 @@ async fn test_auto_transitions() -> Result<(), Box<dyn Error>> {
     sp_handle.abort();
     emulation_handle.abort();
 
-    log::info!(target: &log_target, "Fetching diagnostics trace for assertions.");
+    log::info!(target: &log_target, "Fetching logger trace for assertions.");
     let mut connection = con_arc.get_connection().await;
     match StateManager::get_sp_value(
         &mut connection,
-        &format!("{}_diagnostics_transitions", &sp_id),
+        &format!("{}_logger_automatic_transitions", &sp_id),
     )
     .await
     {
-        Some(diagnostics_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(diagnostics_string)) =
-                diagnostics_sp_value
+        Some(logger_sp_value) => {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) =
+                logger_sp_value
             {
-                if let Ok(diagnostics) =
-                    serde_json::from_str::<Vec<TransitionMsg>>(&diagnostics_string)
+                if let Ok(logger) =
+                    serde_json::from_str::<Vec<TransitionMsg>>(&logger_string)
                 {
-                    let formatted = format_transition_log(&diagnostics);
+                    let formatted = format_transition_log(&logger);
                     println!("{}", formatted);
 
                     colored::control::set_override(false);
-                    let result = format_transition_log(&diagnostics);
+                    let result = format_transition_log(&logger);
 
                     colored::control::unset_override();
 

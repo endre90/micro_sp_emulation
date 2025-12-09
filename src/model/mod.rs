@@ -11,3 +11,5 @@ pub mod timeout_bypass;
 pub mod timeout_disabled;
 pub mod timeout_fatal;
 pub mod timeout_retries;
+pub mod emergency;
+pub mod sop_seq_nom_auto;

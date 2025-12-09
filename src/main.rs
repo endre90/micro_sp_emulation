@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = model::auto_operations::model(&sp_id, &state);
+    let (model, state) = model::disabled::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -44,10 +44,24 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     log::info!(target: "micro_sp_emulator", "Spawning test task.");
 
-    let con_clone = con_arc.clone();
-    let con_local = con_clone.get_connection().await;
-    let sp_id_clone = sp_id.clone();
-    tokio::task::spawn(async move { model::auto_operations::run_emultaion(&sp_id_clone, con_local).await.unwrap() });
+    // let con_clone = con_arc.clone();
+    // let con_local = con_clone.get_connection().await;
+    // let sp_id_clone = sp_id.clone();
+    // tokio::task::spawn(async move { model::emergency::run_emultaion(&sp_id_clone, con_local).await.unwrap() });
+
+    let con_clone = con_arc.clone(); // <-- Pass the Arc
+    // let sp_id_clone = sp_id.clone();
+    tokio::task::spawn(async move {
+        // Get a fresh connection *inside* the new task
+        let con_local = con_clone.get_connection().await;
+
+        // Now run the logic
+        let result = crate::model::disabled::run_emultaion(&sp_id, con_local).await;
+        if let Err(e) = result {
+            // Log any errors instead of just unwrapping
+            log::error!("run_emultaion task failed: {:?}", e);
+        }
+    });
 
     log::info!(target: "micro_sp_emulator", "Node started.");
 
@@ -55,4 +69,3 @@ async fn main() -> Result<(), Box<dyn Error>> {
         tokio::time::sleep(Duration::from_millis(EMULATOR_TICK_INTERVAL)).await;
     }
 }
-

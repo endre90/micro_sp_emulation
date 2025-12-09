@@ -2,7 +2,7 @@ use micro_sp::*;
 use redis::aio::MultiplexedConnection;
 use std::error::Error;
 
-use crate::{DONT_EMULATE_EXECUTION_TIME, EMULATE_EXACT_FAILURE_CAUSE, EMULATE_FAILURE_ALWAYS};
+use crate::{EMULATE_EXACT_EXECUTION_TIME, EMULATE_EXACT_FAILURE_CAUSE, EMULATE_FAILURE_ALWAYS};
 
 pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
@@ -151,7 +151,11 @@ pub async fn run_emultaion(
                 // Optional to test what happens when... (look in the Emulation msg for details)
                 .update(
                     "gantry_emulate_execution_time",
-                    DONT_EMULATE_EXECUTION_TIME.to_spvalue(),
+                    EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
+                )
+                .update(
+                    "gantry_emulated_execution_time",
+                    300.to_spvalue(),
                 )
                 .update(
                     "gantry_emulate_failure_rate",
@@ -291,26 +295,26 @@ async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
     sp_handle.abort();
     emulation_handle.abort();
 
-    log::info!(target: &log_target, "Fetching diagnostics trace for assertions.");
+    log::info!(target: &log_target, "Fetching logger trace for assertions.");
     let mut connection = con_arc.get_connection().await;
     match StateManager::get_sp_value(
         &mut connection,
-        &format!("{}_diagnostics_operations", &sp_id),
+        &format!("{}_logger_planned_operations", &sp_id),
     )
     .await
     {
-        Some(diagnostics_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(diagnostics_string)) =
-                diagnostics_sp_value
+        Some(logger_sp_value) => {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) =
+                logger_sp_value
             {
-                if let Ok(diagnostics) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&diagnostics_string)
+                if let Ok(logger) =
+                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
                 {
-                    let formatted = format_log_rows(&diagnostics);
+                    let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
                     colored::control::set_override(false);
-                    let result = format_log_rows(&diagnostics);
+                    let result = format_log_rows(&logger);
 
                     colored::control::unset_override();
 

@@ -207,26 +207,26 @@ async fn test_timeout_rerties() -> Result<(), Box<dyn Error>> {
     sp_handle.abort();
     emulation_handle.abort();
 
-    log::info!(target: &log_target, "Fetching diagnostics trace for assertions.");
+    log::info!(target: &log_target, "Fetching logger trace for assertions.");
     let mut connection = con_arc.get_connection().await;
     match StateManager::get_sp_value(
         &mut connection,
-        &format!("{}_diagnostics_operations", &sp_id),
+        &format!("{}_logger_planned_operations", &sp_id),
     )
     .await
     {
-        Some(diagnostics_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(diagnostics_string)) =
-                diagnostics_sp_value
+        Some(logger_sp_value) => {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) =
+                logger_sp_value
             {
-                if let Ok(diagnostics) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&diagnostics_string)
+                if let Ok(logger) =
+                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
                 {
-                    let formatted = format_log_rows(&diagnostics);
+                    let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
                     colored::control::set_override(false);
-                    let result = format_log_rows(&diagnostics);
+                    let result = format_log_rows(&logger);
 
                     colored::control::unset_override();
 
