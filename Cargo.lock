@@ -1076,7 +1076,7 @@ checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 [[package]]
 name = "micro_sp"
 version = "0.1.0"
-source = "git+https://github.com/endre90/micro_sp?branch=master#1abf25c88c6052d7b2b76c40b03595a243f26784"
+source = "git+https://github.com/endre90/micro_sp?branch=master#e33ac22d882edc1653c2d0127b9e18ad10d9ffe1"
 dependencies = [
  "async-recursion",
  "chrono",

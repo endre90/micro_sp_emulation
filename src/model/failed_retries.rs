@@ -21,8 +21,8 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         None,
         None,
         Some(2), // If there is to be a failure retry, we need a failure transition
-        None, // If there is to be a timeout retry, we need a timeout transition
-        true, // We can add bypass transitions, but usually not necessary to bypass
+        None,    // If there is to be a timeout retry, we need a timeout transition
+        true,    // We can add bypass transitions, but usually not necessary to bypass
         Vec::from([Transition::parse(
             "start_gantry_unlock",
             "var:gantry_request_state == initial \
@@ -301,12 +301,8 @@ async fn test_failed_retries() -> Result<(), Box<dyn Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string) {
                     let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
@@ -317,7 +313,7 @@ async fn test_failed_retries() -> Result<(), Box<dyn Error>> {
 
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
-let expected_patterns = vec![
+                    let expected_patterns = vec![
                         r"^\+----------------------------------------------------------\+$",
                         r"^\| Past -\d: op_gantry_unlock\s*\|$",
                         r"^\| -----------------\s*\|$",
