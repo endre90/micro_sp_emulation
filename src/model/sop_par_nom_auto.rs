@@ -167,7 +167,7 @@ pub async fn run_emultaion(
                 "gantry_emulate_execution_time",
                 EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
             )
-            .update("gantry_emulated_execution_time", 500.to_spvalue())
+            .update("gantry_emulated_execution_time", 0.to_spvalue())
             .update(
                 "gantry_emulate_failure_rate",
                 DONT_EMULATE_FAILURE.to_spvalue(),
@@ -176,7 +176,7 @@ pub async fn run_emultaion(
                 "robot_emulate_execution_time",
                 EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
             )
-            .update("robot_emulated_execution_time", 700.to_spvalue())
+            .update("robot_emulated_execution_time", 500.to_spvalue())
             .update(
                 "robot_emulate_failure_rate",
                 DONT_EMULATE_FAILURE.to_spvalue(),
@@ -291,6 +291,41 @@ async fn test_sop_par_nom_auto() -> Result<(), Box<dyn Error>> {
     gantry_handle.abort();
     sp_handle.abort();
     emulation_handle.abort();
+
+    log::info!(target: &log_target, "Fetching SOP logger trace aggregate.");
+    let mut connection = con_arc.get_connection().await;
+    match StateManager::get_sp_value(
+        &mut connection,
+        &format!("{}_logger_sop_operations_agg", &sp_id),
+    )
+    .await
+    {
+        Some(logger_sp_value) => {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                println!("adsf: {}", logger_string);
+                if let Ok(logger) =
+                    serde_json::from_str::<Vec<Vec<Vec<OperationLog>>>>(&logger_string)
+                {
+                    for row in logger {
+                        let formatted = format_log_rows(&row);
+                        println!("{}", formatted);
+
+                        colored::control::set_override(false);
+                        // let result = format_log_rows(&row);
+
+                        colored::control::unset_override();
+                    }
+                } else {
+                    println!("fail1");
+                    assert!(false)
+                }
+            } else {
+                println!("fail2");
+                assert!(false)
+            }
+        }
+        None => assert!(false),
+    }
 
     log::info!(target: &log_target, "Fetching SOP logger trace for assertions.");
     let mut connection = con_arc.get_connection().await;
