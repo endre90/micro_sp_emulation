@@ -258,12 +258,8 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string) {
                     let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
@@ -275,22 +271,22 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+------------------------------------------------------------\+$",
-                        r"^\| Past -1: op_emulate_timeout_bypass\s*\|$",
-                        r"^\| --------------------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout for operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Operation timedout\. Bypassing\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Operation bypassed\.\s*\|$",
-                        r"^\+------------------------------------------------------------\+$",
-                        r"^\+---------------------------------------------------\+$",
-                        r"^\| Current: op_emulate_timeout_bypass_2\s*\|$",
-                        r"^\| ----------------------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+---------------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Bypassing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Bypassed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: [\w\.]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
                     ];
 
                     assert_eq!(

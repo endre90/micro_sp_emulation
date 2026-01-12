@@ -199,7 +199,7 @@ pub async fn emulate_robot_operation(request: &RobotRequest) -> RobotResponse {
         }
     };
 
-    log::warn!(target: "robot_emulator", "DELAY: '{}'", request.emulate_execution_time);
+    // log::warn!(target: "robot_emulator", "DELAY: '{}'", request.emulate_execution_time);
 
     let delay_ms: u64 = match request.emulate_execution_time {
         0 => 0,

@@ -145,7 +145,7 @@ pub async fn run_emultaion(
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
+async fn test_sop_sequence() -> Result<(), Box<dyn Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -156,7 +156,7 @@ async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
-    let log_target = "micro_sp_emulation::test_sop_seq_nom_auto";
+    let log_target = "micro_sp_emulation::test_sop_sequence";
     micro_sp::initialize_env_logger();
     let sp_id = "micro_sp".to_string();
 
@@ -167,7 +167,7 @@ async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = crate::model::sop_seq_nom_auto::model(&sp_id, &state);
+    let (model, state) = crate::model::sop_sequence::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -203,7 +203,7 @@ async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
     let con_local = con_clone.get_connection().await;
     // let sp_id_clone = sp_id.clone();
     let emulation_handle = tokio::task::spawn(async move {
-        crate::model::sop_seq_nom_auto::run_emultaion(con_local)
+        crate::model::sop_sequence::run_emultaion(con_local)
             .await
             .unwrap()
     });
@@ -253,12 +253,8 @@ async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string) {
                     let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
@@ -270,46 +266,46 @@ async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Past -\d: op_robot_move_to_a_\w+\s*\|$",
-                        r"^\| -{30}\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Past -\d: op_robot_move_to_b_\w+\s*\|$",
-                        r"^\| -{30}\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Past -\d: op_robot_move_to_a_\w+\s*\|$",
-                        r"^\| -{30}\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Past -\d: op_robot_move_to_b_\w+\s*\|$",
-                        r"^\| -{30}\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Current: op_robot_move_to_a_\w+\s*\|$",
-                        r"^\| -{30}\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -4: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -3: op_robot_move_to_b_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -2: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -1: op_robot_move_to_b_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
                     ];
 
                     assert_eq!(
@@ -352,12 +348,8 @@ async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string) {
                     let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
@@ -369,14 +361,14 @@ async fn test_sop_seq_nom_auto() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+------------------------------------------------------\+$",
-                        r"^\| Current: op_sop_robot_move_ababa\s*\|$",
-                        r"^\| ------------------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Operation completed\.\s*\|$",
-                        r"^\+------------------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: op_sop_robot_move_ababa\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
                     ];
 
                     assert_eq!(

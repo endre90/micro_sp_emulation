@@ -2,7 +2,7 @@ use micro_sp::*;
 use redis::aio::MultiplexedConnection;
 use std::error::Error;
 
-use crate::{DONT_EMULATE_EXECUTION_TIME, EMULATE_EXACT_FAILURE_CAUSE, EMULATE_FAILURE_ALWAYS};
+use crate::{EMULATE_EXACT_EXECUTION_TIME, EMULATE_EXACT_FAILURE_CAUSE, EMULATE_FAILURE_ALWAYS};
 
 pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
@@ -89,7 +89,11 @@ pub async fn run_emultaion(
                 // Optional to test what happens when... (look in the Emulation msg for details)
                 .update(
                     "gantry_emulate_execution_time",
-                    DONT_EMULATE_EXECUTION_TIME.to_spvalue(),
+                    EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
+                )
+                .update(
+                    "gantry_emulated_execution_time",
+                    200.to_spvalue(),
                 )
                 .update(
                     "gantry_emulate_failure_rate",
@@ -255,15 +259,15 @@ async fn test_failed_fatal() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+-----------------------------------------------------------------\+$",
-                        r"^\| Current: op_gantry_unlock\s*\|$",
-                        r"^\| -----------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Operation has no more retries left\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Operation unrecoverable\.\s*\|$",
-                        r"^\+-----------------------------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: op_gantry_unlock\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Fatal failure\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Unrecoverable\s*\|$",
+                        r"^\+--------------------------------------------\+$",
                     ];
                     assert_eq!(
                         result_lines.len(),

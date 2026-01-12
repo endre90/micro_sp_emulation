@@ -1,5 +1,15 @@
 ## An emulation example using micro_sp
 
+## Stress testing:
+```
+cargo nextest run --stress-count 5 --no-fail-fast --status-level fail --test-threads 1
+```
+
+## Test coverage (todo, single thread, no fail fast):
+```
+cargo tarpaulin --out Html
+```
+
 ### Unrelated: getting ROS2 jazzy on ubuntu25.10:
 ### 1. Install core build tools and pipx
 sudo apt update

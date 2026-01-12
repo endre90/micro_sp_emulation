@@ -153,10 +153,7 @@ pub async fn run_emultaion(
                     "gantry_emulate_execution_time",
                     EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
                 )
-                .update(
-                    "gantry_emulated_execution_time",
-                    300.to_spvalue(),
-                )
+                .update("gantry_emulated_execution_time", 300.to_spvalue())
                 .update(
                     "gantry_emulate_failure_rate",
                     EMULATE_FAILURE_ALWAYS.to_spvalue(),
@@ -304,12 +301,8 @@ async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string) {
                     let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
@@ -321,24 +314,24 @@ async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+----------------------------------------------------------\+$",
-                        r"^\| Past -\d: op_gantry_unlock\s*\|$",
-                        r"^\| -----------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Operation failed\. Bypassing\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Operation bypassed\.\s*\|$",
-                        r"^\+----------------------------------------------------------\+$",
-                        r"^\+-----------------------------------------------------------------\+$",
-                        r"^\| Current: op_gantry_calibrate\s*\|$",
-                        r"^\| --------------------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Waiting to be completed\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing operation\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Operation has no more retries left\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Operation unrecoverable\.\s*\|$",
-                        r"^\+-----------------------------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -\d: op_gantry_unlock\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Bypassing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Bypassed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: op_gantry_calibrate\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Fatal failure\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Unrecoverable\s*\|$",
+                        r"^\+--------------------------------------------\+$",
                     ];
                     assert_eq!(
                         result_lines.len(),

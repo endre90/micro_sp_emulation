@@ -160,9 +160,6 @@ pub async fn gantry_emulator(
 
 pub async fn emulate_gantry_operation(request: &GantryRequest) -> GantryResponse {
 
-    log::warn!(target: "robot_emulator", "DELAY_TYPE: '{}'", request.emulate_execution_time);
-    log::warn!(target: "robot_emulator", "DELAY_MS: '{}'", request.emulated_execution_time);
-
     let mut fail = match request.emulate_failure_rate {
         0 => false, // Never fail
         1 => true,  // Always fail
