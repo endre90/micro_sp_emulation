@@ -21,7 +21,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         id: format!("sop_move_robot_and_gantry").to_string(),
         sop: SOP::Parallel(vec![
             robot_move_to_pos("a", &state),
-            gantry_move_to_pos("xkajsdhflkasjdhflkajsdhf", &state),
+            gantry_move_to_pos("b", &state),
         ]),
     };
 
@@ -167,7 +167,8 @@ pub async fn run_emultaion(
                 "gantry_emulate_execution_time",
                 EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
             )
-            .update("gantry_emulated_execution_time", 100.to_spvalue())
+            .update("gantry_emulated_execution_time", 3000.to_spvalue())
+            .update("done", false.to_spvalue())
             .update(
                 "gantry_emulate_failure_rate",
                 DONT_EMULATE_FAILURE.to_spvalue(),
@@ -176,7 +177,7 @@ pub async fn run_emultaion(
                 "robot_emulate_execution_time",
                 EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
             )
-            .update("robot_emulated_execution_time", 500.to_spvalue())
+            .update("robot_emulated_execution_time", 6000.to_spvalue())
             .update(
                 "robot_emulate_failure_rate",
                 DONT_EMULATE_FAILURE.to_spvalue(),
