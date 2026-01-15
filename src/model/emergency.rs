@@ -473,10 +473,6 @@ pub async fn run_emultaion(sp_id: &str, mut con: MultiplexedConnection) -> Resul
                     vec!["violation", "collision", "detected_drift"].to_spvalue(),
                 )
                 .update(
-                    &format!("{sp_id}_current_goal_state"),
-                    CurrentGoalState::Initial.to_spvalue(),
-                )
-                .update(
                     &format!("{sp_id}_current_goal_predicate"),
                     goal.to_spvalue(),
                 )

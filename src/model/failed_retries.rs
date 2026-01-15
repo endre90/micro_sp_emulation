@@ -168,10 +168,6 @@ pub async fn run_emultaion(
                 )
                 .update("gantry_locked_estimated", true.to_spvalue())
                 .update(
-                    &format!("{sp_id}_current_goal_state"),
-                    CurrentGoalState::Initial.to_spvalue(),
-                )
-                .update(
                     &format!("{sp_id}_current_goal_predicate"),
                     goal.to_spvalue(),
                 )

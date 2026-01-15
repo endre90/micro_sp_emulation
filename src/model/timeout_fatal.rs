@@ -86,10 +86,6 @@ pub async fn run_emultaion(
         {
             let new_state = state
                 .update(
-                    &format!("{sp_id}_current_goal_state"),
-                    CurrentGoalState::Initial.to_spvalue(),
-                )
-                .update(
                     &format!("{sp_id}_current_goal_predicate"),
                     goal.to_spvalue(),
                 )

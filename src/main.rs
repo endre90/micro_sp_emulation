@@ -15,16 +15,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let state = model::state::state();
 
-    // // --- FIX: APPLY INITIAL CONFIGURATION HERE ---
-    // // Apply the settings directly to the initial state before anything spawns
-    // let state = state
-    //     .update("gantry_emulate_execution_time", EMULATE_EXACT_EXECUTION_TIME.to_spvalue())
-    //     .update("gantry_emulated_execution_time", 3000.to_spvalue())
-    //     // .update("done", false.to_spvalue())
-    //     .update("gantry_emulate_failure_rate", DONT_EMULATE_FAILURE.to_spvalue())
-    //     .update("robot_emulate_execution_time", EMULATE_EXACT_EXECUTION_TIME.to_spvalue())
-    //     .update("robot_emulated_execution_time", 6000.to_spvalue())
-    //     .update("robot_emulate_failure_rate", DONT_EMULATE_FAILURE.to_spvalue());
+    // Testing the egui op logger with the parallel sop
+    let state = state
+        .update("gantry_emulate_execution_time", EMULATE_EXACT_EXECUTION_TIME.to_spvalue())
+        .update("gantry_emulated_execution_time", 3000.to_spvalue())
+        // .update("done", false.to_spvalue())
+        .update("gantry_emulate_failure_rate", DONT_EMULATE_FAILURE.to_spvalue())
+        .update("robot_emulate_execution_time", EMULATE_EXACT_EXECUTION_TIME.to_spvalue())
+        .update("robot_emulated_execution_time", 6000.to_spvalue())
+        .update("robot_emulate_failure_rate", DONT_EMULATE_FAILURE.to_spvalue());
 
 
     // Add the variables that keep track of the runner state
