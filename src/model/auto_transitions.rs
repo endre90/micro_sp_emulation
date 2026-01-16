@@ -1,6 +1,4 @@
 use micro_sp::*;
-use redis::aio::MultiplexedConnection;
-use std::error::Error;
 
 pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
@@ -40,22 +38,9 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     (model, state)
 }
 
-pub async fn run_emultaion(
-    _sp_id: &str,
-    mut _con: MultiplexedConnection,
-) -> Result<(), Box<dyn Error>> {
-    initialize_env_logger();
-    Ok(())
-}
-
-// TODO
-// Measure operation and plan execution times, and measure total failure rates...
-// Print out plan done or plan failed when done or failed...
-// Generate a RUN report contining time, timeouts, failures, recoveries, paths taken, replans, etc.
-
 #[tokio::test]
 #[serial_test::serial]
-async fn test_auto_transitions() -> Result<(), Box<dyn Error>> {
+async fn test_auto_transitions() -> Result<(), Box<dyn std::error::Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -108,15 +93,10 @@ async fn test_auto_transitions() -> Result<(), Box<dyn Error>> {
     let sp_handle =
         tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
 
-    log::info!(target: &log_target, "Spawning test task.");
-    let con_clone = con_arc.clone();
-    let con_local = con_clone.get_connection().await;
-    let sp_id_clone = sp_id.clone();
-    let emulation_handle = tokio::task::spawn(async move {
-        crate::model::auto_transitions::run_emultaion(&sp_id_clone, con_local)
-            .await
-            .unwrap()
-    });
+    // log::info!(target: &log_target, "Spawning test task.");
+    // let con_clone = con_arc.clone();
+    // let con_local = con_clone.get_connection().await;
+    // let sp_id_clone = sp_id.clone();
 
     log::info!(target: &log_target, "Test started. Polling for condition...");
 
@@ -152,7 +132,6 @@ async fn test_auto_transitions() -> Result<(), Box<dyn Error>> {
     robot_handle.abort();
     gantry_handle.abort();
     sp_handle.abort();
-    emulation_handle.abort();
 
     log::info!(target: &log_target, "Fetching logger trace for assertions.");
     let mut connection = con_arc.get_connection().await;

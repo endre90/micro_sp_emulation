@@ -1,8 +1,4 @@
 use micro_sp::*;
-use redis::aio::MultiplexedConnection;
-use std::error::Error;
-
-use crate::{DONT_EMULATE_FAILURE, EMULATE_EXACT_EXECUTION_TIME};
 
 pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
@@ -25,7 +21,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             Vec::from([Transition::parse(
                 &format!("start_robot_move_to_{pos}"),
                 &format!(
-                "var:counter < 5 \
+                    "var:counter < 5 \
                 && var:robot_request_state == initial \
                 && var:robot_request_trigger == false \
                 && var:robot_position_estimated != {pos}"
@@ -48,7 +44,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
                     "var:robot_request_trigger <- false",
                     "var:robot_request_state <- initial",
                     &format!("var:robot_position_estimated <- {pos}"),
-                    "var:counter += 1"
+                    "var:counter += 1",
                 ],
                 Vec::<&str>::new(),
                 &state,
@@ -65,43 +61,10 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     (model, state)
 }
 
-pub async fn run_emultaion(
-    _sp_id: &str,
-    mut con: MultiplexedConnection,
-) -> Result<(), Box<dyn Error>> {
-    initialize_env_logger();
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-    if let Some(state) = StateManager::get_full_state(&mut con).await {
-        let new_state = state
-            // Optional to test what happens when... (look in the Emulation msg for details)
-            .update(
-                "robot_emulate_execution_time",
-                EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
-            )
-            .update(
-                "robot_emulated_execution_time",
-                500.to_spvalue(),
-            )
-            .update(
-                "robot_emulate_failure_rate",
-                DONT_EMULATE_FAILURE.to_spvalue(),
-            );
-
-        let modified_state = state.get_diff_partial_state(&new_state);
-        StateManager::set_state(&mut con, &modified_state).await;
-    }
-    Ok(())
-}
-
-// TODO
-// Measure operation and plan execution times, and measure total failure rates...
-// Print out plan done or plan failed when done or failed...
-// Generate a RUN report contining time, timeouts, failures, recoveries, paths taken, replans, etc.
-
 #[tokio::test]
 #[serial_test::serial]
-async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
+
+async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -119,6 +82,17 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
     let coverability_tracking = false;
 
     let state = crate::model::state::state();
+    let state = state
+        .update(
+            "robot_emulate_execution_time",
+            crate::EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
+        )
+        .update("robot_emulated_execution_time", 500.to_spvalue())
+        .update("robot_position_estimated", "b".to_spvalue())
+        .update(
+            "robot_emulate_failure_rate",
+            crate::DONT_EMULATE_FAILURE.to_spvalue(),
+        );
 
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
@@ -154,16 +128,6 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
     let sp_handle =
         tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
 
-    log::info!(target: &log_target, "Spawning test task.");
-    let con_clone = con_arc.clone();
-    let con_local = con_clone.get_connection().await;
-    let sp_id_clone = sp_id.clone();
-    let emulation_handle = tokio::task::spawn(async move {
-        crate::model::auto_operations::run_emultaion(&sp_id_clone, con_local)
-            .await
-            .unwrap()
-    });
-
     log::info!(target: &log_target, "Test started. Polling for condition...");
 
     let max_wait = std::time::Duration::from_secs(30);
@@ -198,7 +162,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
     robot_handle.abort();
     gantry_handle.abort();
     sp_handle.abort();
-    emulation_handle.abort();
+    // emulation_handle.abort();
 
     log::info!(target: &log_target, "Fetching logger trace for assertions.");
     let mut connection = con_arc.get_connection().await;
@@ -209,12 +173,8 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string) {
                     let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
@@ -227,7 +187,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: op_robot_move_to_b\s*\|$",
+                        r"^\| Done -4: op_robot_move_to_a\s*\|$",
                         r"^\| ------------------------------------------\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -235,7 +195,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: op_robot_move_to_a\s*\|$",
+                        r"^\| Done -3: op_robot_move_to_b\s*\|$",
                         r"^\| ------------------------------------------\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -243,7 +203,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: op_robot_move_to_b\s*\|$",
+                        r"^\| Done -2: op_robot_move_to_a\s*\|$",
                         r"^\| ------------------------------------------\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -251,7 +211,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: op_robot_move_to_a\s*\|$",
+                        r"^\| Done -1: op_robot_move_to_b\s*\|$",
                         r"^\| ------------------------------------------\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -259,7 +219,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_robot_move_to_b\s*\|$",
+                        r"^\| Latest: op_robot_move_to_a\s*\|$",
                         r"^\| ------------------------------------------\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",

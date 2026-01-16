@@ -1,4 +1,4 @@
-use micro_sp::*;
+use micro_sp::{running::goal_runner::goal_string_to_sp_value, *};
 use std::error::Error;
 use redis::aio::MultiplexedConnection;
 
@@ -270,8 +270,7 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
                         "var:robot_request_state <- initial",
                         "var:robot_mounted_checked <- true",
                         &format!("var:robot_mounted_estimated <- var:robot_mounted_one_time_measured"),
-                        &format!("var:{sp_id}_replan_trigger <- true"),
-                        &format!("var:{sp_id}_replanned <- false"),
+                        &format!("var:{sp_id}_replan_for_same_goal <- true"),
                     ],
                     Vec::<&str>::new(),
                     &state,
@@ -381,23 +380,13 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
 
 pub async fn run_emultaion(sp_id: &str, mut con: MultiplexedConnection) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    let goal = "var:robot_mounted_estimated == suction_tool";
+    let goal = "var:robot_mounted_estimated == suction_tool".to_string();
+    let uq_goal = goal_string_to_sp_value(&goal, running::goal_runner::GoalPriority::Normal);
+    let scheduled_goals = vec![uq_goal].to_spvalue();
 
     if let Some(state) = StateManager::get_full_state(&mut con).await {
-        let plan_state = state.get_string_or_default_to_unknown(
-            &format!("{}_plan_state", sp_id),
-            &format!("{}_emulation_test", sp_id),
-        );
-
-        if PlanState::from_str(&plan_state) == PlanState::Failed
-            || PlanState::from_str(&plan_state) == PlanState::Completed
-            || PlanState::from_str(&plan_state) == PlanState::Initial
-            || PlanState::from_str(&plan_state) == PlanState::UNKNOWN
-        {
-            let new_state = state
-                // Optional to test what happens when... (look in the Emulation msg for details)
-                .update("gantry_emulate_execution_time", 1.to_spvalue())
+        let new_state = state
+                           .update("gantry_emulate_execution_time", 1.to_spvalue())
                 .update("gantry_emulated_execution_time", 200.to_spvalue())
                 .update("robot_emulate_execution_time", 1.to_spvalue())
                 .update("robot_emulated_execution_time", 200.to_spvalue())
@@ -410,22 +399,12 @@ pub async fn run_emultaion(sp_id: &str, mut con: MultiplexedConnection) -> Resul
                     "gantry_emulated_failure_cause",
                     vec!["violation", "collision", "detected_drift"].to_spvalue(),
                 )
-                .update(
-                    &format!("{sp_id}_current_goal_predicate"),
-                    goal.to_spvalue(),
-                )
-                .update(&format!("{sp_id}_replan_trigger"), true.to_spvalue())
-                .update(&format!("{sp_id}_replanned"), false.to_spvalue());
+            .update("gantry_locked_estimated", true.to_spvalue())
+            .update(&format!("{sp_id}_scheduled_goals"), scheduled_goals);
 
-            let modified_state = state.get_diff_partial_state(&new_state);
-            StateManager::set_state(&mut con, &modified_state).await;
-        }
+        let modified_state = state.get_diff_partial_state(&new_state);
+        StateManager::set_state(&mut con, &modified_state).await;
     }
-
-    // TODO
-    // Measure operation and plan execution times, and measure total failure rates...
-    // Print out plan done or plan failed when done or failed...
-    // Generate a RUN report contining time, timeouts, failures, recoveries, paths taken, replans, etc.
 
     Ok(())
 }
@@ -559,7 +538,7 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -7: op_robot_chec\.\.\.n_tool_mounted\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -567,7 +546,7 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -6: op_gantry_unlock\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -575,7 +554,7 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -5: op_gantry_calibrate\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -583,7 +562,7 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -4: op_gantry_lock\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -591,7 +570,7 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -3: op_robot_move\.\.\.pper_tool_rack\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -599,7 +578,7 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -2: op_robot_unmount_gripper_tool\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -607,7 +586,15 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: [\w\.]+\s*\|$",
+                        r"^\| Done -1: op_robot_move\.\.\.tion_tool_rack\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: op_robot_mount_suction_tool\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",

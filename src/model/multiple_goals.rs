@@ -2,109 +2,65 @@ use micro_sp::{running::goal_runner::goal_string_to_sp_value, *};
 use redis::aio::MultiplexedConnection;
 use std::error::Error;
 
+use crate::{DONT_EMULATE_FAILURE, EMULATE_EXACT_EXECUTION_TIME};
+
 pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
     let auto_transitions = vec![];
     let sops = vec![];
     let mut operations = vec![];
+    let auto_operations = vec![];
 
-    let timeout = bv!(&&format!("timeout"));
-    let bypassed = bv!(&&format!("bypassed"));
-    let x = bv!(&&format!("x"));
-    let state = state.add(assign!(timeout, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
-    let state = state.add(assign!(bypassed, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
-    let state = state.add(assign!(x, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
+    let counter = iv!(&&format!("counter"));
+    let state = state.add(assign!(counter, SPValue::Int64(IntOrUnknown::Int64(0))));
 
-    operations.push(Operation::new(
-        &format!("emulate_timeout_bypass"),
-        Some(500),
-        None,
-        None,
-        None,
-        true,
-        Vec::from([Transition::parse(
-            &format!("start_sleep"),
-            "var:micro_sp_time_request_state == initial \
-            && var:micro_sp_time_request_trigger == false",
-            "true",
-            vec![
-                &format!("var:micro_sp_time_request_trigger <- true"),
-                &format!("var:micro_sp_time_duration_ms <- 3000"),
-                &format!("var:micro_sp_time_command <- sleep"),
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([Transition::parse(
-            &format!("complete_sleep"),
-            "true",
-            &format!("var:micro_sp_time_request_state == succeeded"),
-            vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
-                "var:timeout <- false",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([]),
-        Vec::from([Transition::parse(
-            &format!("timeout_sleep"),
-            "true",
-            "true",
-            vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
-                "var:timeout <- true",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([Transition::parse(
-            &format!("timeout_sleep"),
-            "true",
-            "true",
-            vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
-                "var:bypassed <- true",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([]),
-    ));
+    for pos in vec!["a", "b", "c"] {
+        operations.push(Operation::new(
+            &format!("robot_move_to_{}", pos),
+            None,
+            None,
+            None,
+            None,
+            false,
+            Vec::from([Transition::parse(
+                &format!("start_robot_move_to_{pos}"),
+                &format!(
+                    "var:counter < 5 \
+                && var:robot_request_state == initial \
+                && var:robot_request_trigger == false \
+                && var:robot_position_estimated != {pos}"
+                ),
+                "true",
+                vec![
+                    &format!("var:robot_command_command <- move"),
+                    &format!("var:robot_position_command <- {pos}"),
+                    &format!("var:robot_speed_command <- 0.5"),
+                    "var:robot_request_trigger <- true",
+                ],
+                Vec::<&str>::new(),
+                &state,
+            )]),
+            Vec::from([Transition::parse(
+                &format!("complete_robot_move_to_{pos}"),
+                "true",
+                &format!("var:robot_request_state == succeeded"),
+                vec![
+                    "var:robot_request_trigger <- false",
+                    "var:robot_request_state <- initial",
+                    &format!("var:robot_position_estimated <- {pos}"),
+                    "var:counter += 1",
+                ],
+                Vec::<&str>::new(),
+                &state,
+            )]),
+            Vec::from([]),
+            Vec::from([]),
+            Vec::from([]),
+            Vec::from([]),
+        ));
+    }
 
-    operations.push(Operation::new(
-        &format!("emulate_timeout_bypass_2"),
-        None,
-        None,
-        None,
-        None,
-        false,
-        Vec::from([Transition::parse(
-            &format!("start_sleep"),
-            &format!("var:timeout == false || var:bypassed == true"),
-            "true",
-            vec![],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([Transition::parse(
-            &format!("complete_sleep"),
-            "true",
-            "true",
-            vec!["var:x <- true"],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([]),
-        Vec::from([]),
-        Vec::from([]),
-        Vec::from([]),
-    ));
-
-    let model = Model::new(sp_id, auto_transitions, vec![], sops, operations);
+    let model = Model::new(sp_id, auto_transitions, auto_operations, sops, operations);
 
     (model, state)
 }
@@ -114,25 +70,43 @@ pub async fn run_emultaion(
     mut con: MultiplexedConnection,
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
-    let goal = "var:x == true".to_string();
 
-    let uq_goal = goal_string_to_sp_value(&goal, running::goal_runner::GoalPriority::Normal);
-    let scheduled_goals = vec![uq_goal].to_spvalue();
+    let goal_a = "var:robot_position_estimated == a".to_string();
+    let goal_b = "var:robot_position_estimated == b".to_string();
+    let goal_c = "var:robot_position_estimated == c".to_string();
+
+    let uq_goal_a1 = goal_string_to_sp_value(&goal_b, running::goal_runner::GoalPriority::Normal);
+    let uq_goal_b1 = goal_string_to_sp_value(&goal_a, running::goal_runner::GoalPriority::Normal);
+    let uq_goal_a2 = goal_string_to_sp_value(&goal_c, running::goal_runner::GoalPriority::Normal);
+    let uq_goal_b2 = goal_string_to_sp_value(&goal_b, running::goal_runner::GoalPriority::Normal);
+    let uq_goal_a3 = goal_string_to_sp_value(&goal_c, running::goal_runner::GoalPriority::Normal);
+
+    let scheduled_goals =
+        vec![uq_goal_a1, uq_goal_b1, uq_goal_a2, uq_goal_b2, uq_goal_a3].to_spvalue();
 
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let new_state = state
+            // Optional to test what happens when... (look in the Emulation msg for details)
+            .update(
+                "robot_emulate_execution_time",
+                EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
+            )
+            .update("robot_emulated_execution_time", 300.to_spvalue())
+            .update(
+                "robot_emulate_failure_rate",
+                DONT_EMULATE_FAILURE.to_spvalue(),
+            )
             .update(&format!("{sp_id}_scheduled_goals"), scheduled_goals);
 
         let modified_state = state.get_diff_partial_state(&new_state);
         StateManager::set_state(&mut con, &modified_state).await;
     }
-
     Ok(())
 }
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
+async fn test_goal_runner() -> Result<(), Box<dyn Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -143,7 +117,7 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
-    let log_target = "micro_sp_emulation::test_timeout_rerties";
+    let log_target = "micro_sp_emulation::test_goal_runner";
     micro_sp::initialize_env_logger();
     let sp_id = "micro_sp".to_string();
 
@@ -154,7 +128,7 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = crate::model::timeout_bypass::model(&sp_id, &state);
+    let (model, state) = crate::model::multiple_goals::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -190,20 +164,21 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
     let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
     let emulation_handle = tokio::task::spawn(async move {
-        crate::model::timeout_bypass::run_emultaion(&sp_id_clone, con_local)
+        crate::model::multiple_goals::run_emultaion(&sp_id_clone, con_local)
             .await
             .unwrap()
     });
 
-    log::info!(target: &log_target, "Test started. Polling for condition...");
+    // log::info!(target: &log_target, "Test started. Polling for condition...");
+    log::info!(target: &log_target, "Test started.");
 
     let max_wait = std::time::Duration::from_secs(30);
     let polling_logic = async {
         loop {
             let mut connection = con_arc.get_connection().await;
             match StateManager::get_full_state(&mut connection).await {
-                Some(state) => match state.get_bool_or_unknown(&format!("timeout"), &log_target) {
-                    BoolOrUnknown::Bool(true) => {
+                Some(state) => match state.get_int_or_unknown(&format!("counter"), &log_target) {
+                    IntOrUnknown::Int64(5) => {
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                         break;
@@ -252,25 +227,48 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
 
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
-                    let expected_patterns = vec![
+                   let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -4: op_robot_move_to_b\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Bypassing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Bypassed\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: [\w\.]+\s*\|$",
+                        r"^\| Done -3: op_robot_move_to_a\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -2: op_robot_move_to_c\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -1: op_robot_move_to_b\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: op_robot_move_to_c\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                     ];
-
                     assert_eq!(
                         result_lines.len(),
                         expected_patterns.len(),

@@ -1,4 +1,4 @@
-use micro_sp::*;
+use micro_sp::{running::goal_runner::goal_string_to_sp_value, *};
 use redis::aio::MultiplexedConnection;
 use std::error::Error;
 
@@ -53,31 +53,35 @@ pub async fn run_emultaion(
     mut con: MultiplexedConnection,
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    let goal = "var:done == true";
+    // tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let goal = "var:done == true".to_string();
+    let uq_goal = goal_string_to_sp_value(&goal, running::goal_runner::GoalPriority::Normal);
+    let scheduled_goals = vec![uq_goal].to_spvalue();
 
     if let Some(state) = StateManager::get_full_state(&mut con).await {
-        let plan_state = state.get_string_or_default_to_unknown(
-            &format!("{}_plan_state", sp_id),
-            &format!("{}_disabled_test", sp_id),
-        );
+        let new_state = state
+            .update(
+                "robot_emulate_execution_time",
+                crate::EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
+            )
+            .update("robot_emulated_execution_time", 300.to_spvalue())
+            .update(
+                "robot_emulate_failure_rate",
+                crate::DONT_EMULATE_FAILURE.to_spvalue(),
+            )
+            .update(
+                "gantry_emulate_execution_time",
+                crate::EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
+            )
+            .update("gantry_emulated_execution_time", 300.to_spvalue())
+            .update(
+                "gantry_emulate_failure_rate",
+                crate::DONT_EMULATE_FAILURE.to_spvalue(),
+            )
+            .update(&format!("{sp_id}_scheduled_goals"), scheduled_goals);
 
-        if PlanState::from_str(&plan_state) == PlanState::Failed
-            || PlanState::from_str(&plan_state) == PlanState::Completed
-            || PlanState::from_str(&plan_state) == PlanState::Initial
-            || PlanState::from_str(&plan_state) == PlanState::UNKNOWN
-        {
-            let new_state = state
-                .update(
-                    &format!("{sp_id}_current_goal_predicate"),
-                    goal.to_spvalue(),
-                )
-                .update(&format!("{sp_id}_replan_trigger"), true.to_spvalue())
-                .update(&format!("{sp_id}_replanned"), false.to_spvalue());
-
-            let modified_state = state.get_diff_partial_state(&new_state);
-            StateManager::set_state(&mut con, &modified_state).await;
-        }
+        let modified_state = state.get_diff_partial_state(&new_state);
+        StateManager::set_state(&mut con, &modified_state).await;
     }
 
     Ok(())
@@ -199,12 +203,8 @@ async fn test_disabled() -> Result<(), Box<dyn Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<Vec<OperationLog>>>(&logger_string) {
                     let formatted = format_log_rows(&logger);
                     println!("{}", formatted);
 
