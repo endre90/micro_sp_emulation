@@ -15,4 +15,5 @@ pub mod emergency;
 pub mod sop_sequence;
 pub mod sop_parallel;
 pub mod sop_alternative;
-pub mod multiple_goals;
+pub mod scheduled_goals;
+pub mod incoming_goals;

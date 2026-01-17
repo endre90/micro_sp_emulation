@@ -128,7 +128,7 @@ async fn test_goal_runner() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = crate::model::multiple_goals::model(&sp_id, &state);
+    let (model, state) = crate::model::scheduled_goals::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -164,7 +164,7 @@ async fn test_goal_runner() -> Result<(), Box<dyn Error>> {
     let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
     let emulation_handle = tokio::task::spawn(async move {
-        crate::model::multiple_goals::run_emultaion(&sp_id_clone, con_local)
+        crate::model::scheduled_goals::run_emultaion(&sp_id_clone, con_local)
             .await
             .unwrap()
     });
