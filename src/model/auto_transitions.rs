@@ -142,12 +142,8 @@ async fn test_auto_transitions() -> Result<(), Box<dyn std::error::Error>> {
     .await
     {
         Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) =
-                logger_sp_value
-            {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<TransitionMsg>>(&logger_string)
-                {
+            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+                if let Ok(logger) = serde_json::from_str::<Vec<TransitionMsg>>(&logger_string) {
                     let formatted = format_transition_log(&logger);
                     println!("{}", formatted);
 
@@ -159,16 +155,16 @@ async fn test_auto_transitions() -> Result<(), Box<dyn std::error::Error>> {
                     let result_lines: Vec<&str> = result.trim().lines().collect();
 
                     let expected_patterns = vec![
-                        r"^\+-----------------------------------------------------------\+$",
-                        r"^\| Transitions\s*\|$",
-                        r"^\| -----------\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_on: Executed auto transition\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_off: Executed auto transition\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_on: Executed auto transition\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_off: Executed auto transition\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_on: Executed auto transition\.\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_off: Executed auto transition\.\s*\|$",
-                        r"^\+-----------------------------------------------------------\+$",
+                        r"^\+------------------------------------------------------\+$",
+                        r"^\| Automatic transitions\s*\|$",
+                        r"^\| ---------------------\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_on_[\w]+: Executed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_off_[\w]+: Executed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_on_[\w]+: Executed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_off_[\w]+: Executed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_on_[\w]+: Executed\.\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3}\] turn_lights_off_[\w]+: Executed\.\s*\|$",
+                        r"^\+------------------------------------------------------\+$",
                     ];
                     assert_eq!(
                         result_lines.len(),
