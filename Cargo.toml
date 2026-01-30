@@ -24,7 +24,7 @@ redis = { version = "0.29.1", features = ["tokio-comp"] }
 ordered-float = {version = "3.4.0", features = ["serde"] }
 tokio = { version = "1", features = ["full"] }
 tokio-test = "0.4.4"
-micro_sp = {git = "https://github.com/endre90/micro_sp", branch = "master"}
+micro_sp = { git = "ssh://git@github.com/endre90/micro_sp.git", branch = "master" }
 testcontainers = "0.23.3"
 testcontainers-modules = { version = "0.11.6", features = ["redis"] }
 serial_test = "3.2.0"
