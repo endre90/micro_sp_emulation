@@ -2,122 +2,51 @@ use micro_sp::{running::goal_runner::goal_string_to_sp_value, *};
 use redis::aio::MultiplexedConnection;
 use std::error::Error;
 
-use crate::{EMULATE_EXACT_EXECUTION_TIME, EMULATE_EXACT_FAILURE_CAUSE, EMULATE_FAILURE_ALWAYS};
-
 pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let state = state.clone();
     let auto_transitions = vec![];
     let sops = vec![];
     let mut operations = vec![];
 
-    let failed = bv!(&&format!("failed"));
-    let state = state.add(assign!(failed, SPValue::Bool(BoolOrUnknown::Bool(false))));
+    let timeout = bv!(&&format!("timeout"));
+    let state = state.add(assign!(timeout, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
 
-    let bypassed = bv!(&&format!("bypassed"));
-    let state = state.add(assign!(bypassed, SPValue::Bool(BoolOrUnknown::Bool(false))));
-
-    operations.push(Operation::new(
-        "gantry_unlock",
-        None,
-        None,
-        None, // If there is to be a failure retry, we need a failure transition
-        None, // If there is to be a timeout retry, we need a timeout transition
-        true, // We can add bypass transitions, but usually not necessary to bypass
-        Vec::from([Transition::parse(
-            "start_gantry_unlock",
-            "var:gantry_request_state == initial \
-                && var:gantry_request_trigger == false",
-            "true",
-            vec![
-                &format!("var:gantry_command_command <- unlock"),
-                "var:gantry_request_trigger <- true",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([Transition::parse(
-            "complete_gantry_unlock",
-            "true",
-            "var:gantry_request_state == succeeded",
-            vec![
-                "var:gantry_request_trigger <- false",
-                "var:gantry_request_state <- initial",
-                "var:gantry_locked_estimated <- false",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([Transition::parse(
-            "failed_gantry_unlock",
-            "true",
-            "var:gantry_request_state == failed",
-            vec![
-                "var:gantry_request_trigger <- false",
-                "var:gantry_request_state <- initial",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([]),
-        Vec::from([Transition::parse(
-            "bypass_gantry_unlock",
-            "true",
-            "true",
-            vec![
-                "var:gantry_request_trigger <- false",
-                "var:gantry_request_state <- initial",
-                "var:bypassed <- true",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
-        Vec::from([]),
-    ));
+    let counter = iv!(&&format!("counter"));
+    let state = state.add(assign!(counter, SPValue::Int64(IntOrUnknown::Int64(0))));
 
     operations.push(Operation::new(
-        "gantry_calibrate",
+        &format!("emulate_counter_goals"),
         None,
         None,
         None,
         None,
         false,
         Vec::from([Transition::parse(
-            "start_gantry_calibrate",
-            "(var:gantry_locked_estimated == false || var:bypassed == true) \
-                && var:gantry_request_state == initial \
-                && var:gantry_request_trigger == false",
+            &format!("start_sleep"),
+            "var:micro_sp_time_request_state == initial \
+            && var:micro_sp_time_request_trigger == false",
             "true",
             vec![
-                &format!("var:gantry_command_command <- calibrate"),
-                "var:gantry_request_trigger <- true",
+                &format!("var:micro_sp_time_request_trigger <- true"),
+                &format!("var:micro_sp_time_duration_ms <- 2000"),
+                &format!("var:micro_sp_time_command <- sleep"),
             ],
             Vec::<&str>::new(),
             &state,
         )]),
         Vec::from([Transition::parse(
-            "complete_gantry_calibrate",
+            &format!("complete_sleep"),
             "true",
-            "var:gantry_request_state == succeeded",
+            &format!("var:micro_sp_time_request_state == succeeded"),
             vec![
-                "var:gantry_request_trigger <- false",
-                "var:gantry_request_state <- initial",
-                "var:gantry_calibrated_estimated <- true",
+                "var:micro_sp_time_request_trigger <- false",
+                "var:micro_sp_time_request_state <- initial",
+                "var:counter += 1",
             ],
             Vec::<&str>::new(),
             &state,
         )]),
-        Vec::from([Transition::parse(
-            "failed_gantry_unlock",
-            "true",
-            "var:gantry_request_state == failed",
-            vec![
-                "var:gantry_request_trigger <- false",
-                "var:gantry_request_state <- initial",
-                "var:failed <- true",
-            ],
-            Vec::<&str>::new(),
-            &state,
-        )]),
+        Vec::from([]),
         Vec::from([]),
         Vec::from([]),
         Vec::from([]),
@@ -133,31 +62,13 @@ pub async fn run_emultaion(
     mut con: MultiplexedConnection,
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
-    let goal = "var:gantry_calibrated_estimated == true".to_string();
+    let goal = "var:counter == 5".to_string();
+
     let uq_goal = goal_string_to_sp_value(&goal, running::goal_runner::GoalPriority::Normal);
     let scheduled_goals = vec![uq_goal].to_spvalue();
 
     if let Some(state) = StateManager::get_full_state(&mut con).await {
-        let new_state = state
-            .update(
-                "gantry_emulate_execution_time",
-                EMULATE_EXACT_EXECUTION_TIME.to_spvalue(),
-            )
-            .update("gantry_emulated_execution_time", 300.to_spvalue())
-            .update(
-                "gantry_emulate_failure_rate",
-                EMULATE_FAILURE_ALWAYS.to_spvalue(),
-            )
-            .update(
-                "gantry_emulate_failure_cause",
-                EMULATE_EXACT_FAILURE_CAUSE.to_spvalue(),
-            )
-            .update(
-                "gantry_emulated_failure_cause",
-                vec!["collision"].to_spvalue(),
-            )
-            .update("gantry_locked_estimated", true.to_spvalue())
-            .update(&format!("{sp_id}_scheduled_goals"), scheduled_goals);
+        let new_state = state.update(&format!("{sp_id}_scheduled_goals"), scheduled_goals);
 
         let modified_state = state.get_diff_partial_state(&new_state);
         StateManager::set_state(&mut con, &modified_state).await;
@@ -168,7 +79,7 @@ pub async fn run_emultaion(
 
 #[tokio::test]
 #[serial_test::serial]
-async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
+async fn test_timeout() -> Result<(), Box<dyn Error>> {
     use regex::Regex;
     use testcontainers::{ImageExt, core::ContainerPort, runners::AsyncRunner};
     use testcontainers_modules::redis::Redis;
@@ -179,7 +90,7 @@ async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
-    let log_target = "micro_sp_emulation::test_failed_bypass";
+    let log_target = "micro_sp_emulation::test_timeout";
     micro_sp::initialize_env_logger();
     let sp_id = "micro_sp".to_string();
 
@@ -190,7 +101,7 @@ async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
     let runner_vars = generate_runner_state_variables(&sp_id);
     let state = state.extend(runner_vars, true);
 
-    let (model, state) = crate::model::failed_bypass::model(&sp_id, &state);
+    let (model, state) = crate::model::counter_goal::model(&sp_id, &state);
 
     let op_vars = generate_operation_state_variables(&model, coverability_tracking);
     let state = state.extend(op_vars, true);
@@ -226,25 +137,26 @@ async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
     let con_local = con_clone.get_connection().await;
     let sp_id_clone = sp_id.clone();
     let emulation_handle = tokio::task::spawn(async move {
-        crate::model::failed_bypass::run_emultaion(&sp_id_clone, con_local)
+        crate::model::counter_goal::run_emultaion(&sp_id_clone, con_local)
             .await
             .unwrap()
     });
 
     log::info!(target: &log_target, "Test started. Polling for condition...");
 
-    let max_wait = std::time::Duration::from_secs(30);
+    let max_wait = std::time::Duration::from_secs(20);
     let polling_logic = async {
         loop {
             let mut connection = con_arc.get_connection().await;
             match StateManager::get_full_state(&mut connection).await {
-                Some(state) => match state.get_bool_or_unknown(&format!("failed"), &log_target) {
-                    BoolOrUnknown::Bool(true) => {
-                        // Wait before aborting the handles so that the operation can cycle through all states
-                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                        break;
+                Some(state) => match state.get_int_or_unknown(&format!("counter"), &log_target) {
+                    IntOrUnknown::Int64(x) => {
+                        if x == 5 {
+                            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                            break;
+                        }
                     }
-                    _ => (),
+                    _ => log::error!(target: &log_target, "COUNTER IS NOT INTEGER"),
                 },
                 None => log::error!(target: &log_target, "Failed to get full state."),
             }
@@ -290,24 +202,47 @@ async fn test_failed_bypass() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -1: op_gantry_unlock_[\w]+\s*\|$",
+                        r"^\| Done -4: op_emulate_co\.\.\.als_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Bypassing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Bypassed\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_gantry_calibrate_[\w]+\s*\|$",
+                        r"^\| Done -3: op_emulate_co\.\.\.als_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Failing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Failed\s+\] Fatal failure\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Fatal\s+\] Unrecoverable\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -2: op_emulate_co\.\.\.als_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Done -1: op_emulate_co\.\.\.als_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+$",
+                        r"^\| Latest: op_emulate_co\.\.\.als_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                     ];
+
                     assert_eq!(
                         result_lines.len(),
                         expected_patterns.len(),

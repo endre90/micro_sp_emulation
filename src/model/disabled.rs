@@ -217,8 +217,8 @@ async fn test_disabled() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_emulate_disabled\s*\|$",
-                        r"^\| ------------------------------------------\s*\|$",
+                        r"^\| Latest: op_emulate_disabled_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Disabling\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Disabled\s+\] Disabled\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Disabled\s+\] Starting\s*\|$",
