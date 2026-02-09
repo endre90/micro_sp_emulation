@@ -209,7 +209,7 @@ async fn test_timeout() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_emulate_timeout\s*\|$",
+                        r"^\| Latest: op_emulate_timeout_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",

@@ -1,5 +1,5 @@
 // pub mod minimal;
-// pub mod auto_operations; // These fail now for some reason, fix
+pub mod auto_operations; // These fail now for some reason, fix
 pub mod auto_transitions;
 pub mod disabled;
 pub mod failed_fatal;

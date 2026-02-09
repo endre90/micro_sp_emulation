@@ -163,6 +163,8 @@ async fn test_disabled() -> Result<(), Box<dyn Error>> {
                     BoolOrUnknown::Bool(true) => {
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        let state = StateManager::get_full_state(&mut connection).await.unwrap();
+                        println!("DONE STATE: {}", state);
                         break;
                     }
                     BoolOrUnknown::Bool(false) => {

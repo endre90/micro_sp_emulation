@@ -290,7 +290,7 @@ async fn test_failed_retries() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: op_gantry_unlock\s*\|$",
+                        r"^\| Done -1: op_gantry_unlock_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -307,7 +307,7 @@ async fn test_failed_retries() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Bypassed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_gantry_calibrate\s*\|$",
+                        r"^\| Latest: op_gantry_calibrate_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",

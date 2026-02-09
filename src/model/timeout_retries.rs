@@ -212,15 +212,15 @@ async fn test_timeout_rerties() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_emulate_timeout_retries\s*\|$",
+                        r"^\| Latest: op_emulate_ti\.\.\.ies_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Retrying \d/\d\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Retrying 1/2\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Retrying \d/\d\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Retrying 2/2\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Fatal timeout\s*\|$",

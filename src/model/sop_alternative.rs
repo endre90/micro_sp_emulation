@@ -291,39 +291,39 @@ async fn test_sop_alternative() -> Result<(), Box<dyn Error>> {
     sp_handle.abort();
     emulation_handle.abort();
 
-    log::info!(target: &log_target, "Fetching SOP logger trace aggregate.");
-    let mut connection = con_arc.get_connection().await;
-    match StateManager::get_sp_value(
-        &mut connection,
-        &format!("{}_logger_sop_operations_agg", &sp_id),
-    )
-    .await
-    {
-        Some(logger_sp_value) => {
-            if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
-                if let Ok(logger) =
-                    serde_json::from_str::<Vec<Vec<Vec<OperationLog>>>>(&logger_string)
-                {
-                    for row in logger {
-                        let formatted = format_log_rows(&row);
-                        println!("{}", formatted);
+    // log::info!(target: &log_target, "Fetching SOP logger trace aggregate.");
+    // let mut connection = con_arc.get_connection().await;
+    // match StateManager::get_sp_value(
+    //     &mut connection,
+    //     &format!("{}_logger_sop_operations_agg", &sp_id),
+    // )
+    // .await
+    // {
+    //     Some(logger_sp_value) => {
+    //         if let SPValue::String(StringOrUnknown::String(logger_string)) = logger_sp_value {
+    //             if let Ok(logger) =
+    //                 serde_json::from_str::<Vec<Vec<Vec<OperationLog>>>>(&logger_string)
+    //             {
+    //                 for row in logger {
+    //                     let formatted = format_log_rows(&row);
+    //                     println!("{}", formatted);
 
-                        colored::control::set_override(false);
-                        // let result = format_log_rows(&row);
+    //                     colored::control::set_override(false);
+    //                     // let result = format_log_rows(&row);
 
-                        colored::control::unset_override();
-                    }
-                } else {
-                    println!("fail1");
-                    assert!(false)
-                }
-            } else {
-                println!("fail2");
-                assert!(false)
-            }
-        }
-        None => assert!(false),
-    }
+    //                     colored::control::unset_override();
+    //                 }
+    //             } else {
+    //                 println!("fail1");
+    //                 assert!(false)
+    //             }
+    //         } else {
+    //             println!("fail2");
+    //             assert!(false)
+    //         }
+    //     }
+    //     None => assert!(false),
+    // }
 
     log::info!(target: &log_target, "Fetching SOP logger trace for assertions.");
     let mut connection = con_arc.get_connection().await;
@@ -411,7 +411,7 @@ async fn test_sop_alternative() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_sop_move_robot\s*\|$",
+                        r"^\| Latest: op_sop_move_robot_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",

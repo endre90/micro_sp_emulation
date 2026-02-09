@@ -137,8 +137,11 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
             match StateManager::get_full_state(&mut connection).await {
                 Some(state) => match state.get_int_or_unknown(&format!("counter"), &log_target) {
                     IntOrUnknown::Int64(5) => {
+                        
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        // let state = StateManager::get_full_state(&mut connection).await.unwrap();
+                        // println!("DONE STATE: {}", state);
                         break;
                     }
                     _ => (),
@@ -187,40 +190,40 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -4: op_robot_move_to_a\s*\|$",
-                        r"^\| ------------------------------------------\s*\|$",
+                        r"^\| Done -4: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -3: op_robot_move_to_b\s*\|$",
-                        r"^\| ------------------------------------------\s*\|$",
+                        r"^\| Done -3: op_robot_move_to_b_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -2: op_robot_move_to_a\s*\|$",
-                        r"^\| ------------------------------------------\s*\|$",
+                        r"^\| Done -2: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -1: op_robot_move_to_b\s*\|$",
-                        r"^\| ------------------------------------------\s*\|$",
+                        r"^\| Done -1: op_robot_move_to_b_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_robot_move_to_a\s*\|$",
-                        r"^\| ------------------------------------------\s*\|$",
+                        r"^\| Latest: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",

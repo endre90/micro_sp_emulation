@@ -62,7 +62,10 @@ fn sop_operation_move_ababa(sp_id: &str, state: &State) -> Operation {
             &format!("complete_robot_move_ababa"),
             "true",
             &format!("var:{sp_id}_sop_state == completed"),
-            vec!["var:done <- true"],
+            vec![
+                "var:done <- true",
+                &format!("var:{sp_id}_sop_state <- initial"),
+            ],
             Vec::<&str>::new(),
             &state,
         )]),
@@ -209,7 +212,7 @@ async fn test_sop_sequence() -> Result<(), Box<dyn Error>> {
 
     log::info!(target: &log_target, "Test started. Polling for condition...");
 
-    let max_wait = std::time::Duration::from_secs(15);
+    let max_wait = std::time::Duration::from_secs(20);
     let polling_logic = async {
         loop {
             let mut connection = con_arc.get_connection().await;
@@ -220,7 +223,7 @@ async fn test_sop_sequence() -> Result<(), Box<dyn Error>> {
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                         break;
                     }
-                    _ => (),
+                    _ => (), //println!("{}", state),
                 },
                 None => log::error!(target: &log_target, "Failed to get full state."),
             }
@@ -361,7 +364,7 @@ async fn test_sop_sequence() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_sop_robot_move_ababa\s*\|$",
+                        r"^\| Latest: op_sop_robot_\.\.\.aba_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",

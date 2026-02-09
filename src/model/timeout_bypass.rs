@@ -120,8 +120,7 @@ pub async fn run_emultaion(
     let scheduled_goals = vec![uq_goal].to_spvalue();
 
     if let Some(state) = StateManager::get_full_state(&mut con).await {
-        let new_state = state
-            .update(&format!("{sp_id}_scheduled_goals"), scheduled_goals);
+        let new_state = state.update(&format!("{sp_id}_scheduled_goals"), scheduled_goals);
 
         let modified_state = state.get_diff_partial_state(&new_state);
         StateManager::set_state(&mut con, &modified_state).await;
@@ -254,7 +253,7 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -1: op_emulate_ti\.\.\.ass_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -263,11 +262,13 @@ async fn test_timeout_bypass() -> Result<(), Box<dyn Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Bypassed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: [\w\.]+\s*\|$",
+                        r"^\| Latest: op_emulate_ti\.\.\.s_2_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Timeout\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Timedout\s+\] Bypassing\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Bypassed\s+\] Bypassed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                     ];
 
