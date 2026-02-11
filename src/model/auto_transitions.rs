@@ -71,6 +71,8 @@ async fn test_auto_transitions() -> Result<(), Box<dyn std::error::Error>> {
     StateManager::set_state(&mut connection_manager.get_connection().await, &state).await;
     let con_arc = std::sync::Arc::new(connection_manager);
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     log::info!(target: &log_target, "Spawning emulators.");
 
     let con_clone = con_arc.clone();

@@ -84,6 +84,8 @@ pub async fn run_emultaion(
     let scheduled_goals =
         vec![uq_goal_a1, uq_goal_b1, uq_goal_a2, uq_goal_b2, uq_goal_a3].to_spvalue();
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let new_state = state
             // Optional to test what happens when... (look in the Emulation msg for details)

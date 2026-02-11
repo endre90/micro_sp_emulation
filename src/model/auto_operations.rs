@@ -122,6 +122,8 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap()
     });
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     log::info!(target: &log_target, "Spawning Micro SP.");
     let con_clone = con_arc.clone();
     let sp_id_clone = sp_id.clone();

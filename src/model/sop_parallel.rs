@@ -159,6 +159,8 @@ pub async fn run_emultaion(
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let new_state = state
             // Optional to test what happens when... (look in the Emulation msg for details)
@@ -349,21 +351,21 @@ async fn test_sop_paralell() -> Result<(), Box<dyn Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -\d: [\w\.]+\s*\|$",
+                        r"^\| Done -1: op_gantry_move_to_b_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: [\w\.]+\s*\|$",
-                        r"^\| -+\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\|$",
-                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
-                        r"^\+--------------------------------------------\+$",
+                        r"^\+--------------------------------------------\+ \+--------------------------------------------\+$",
+                        r"^\| Latest: op_robot_move_to_a_[\w]+\s*\| \| Latest: op_gantry_move_to_b_[\w]+\s*\|$",
+                        r"^\| -+\s*\| \| -+\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\| \| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Terminated\] Completed\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\| \|\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Completing\s*\| \|\s*\|$",
+                        r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\| \|\s*\|$",
+                        r"^\+--------------------------------------------\+ \+--------------------------------------------\+$",
                     ];
 
                     assert_eq!(

@@ -125,6 +125,8 @@ pub async fn run_emultaion(
 ) -> Result<(), Box<dyn Error>> {
     initialize_env_logger();
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let new_state = state
             // Optional to test what happens when... (look in the Emulation msg for details)

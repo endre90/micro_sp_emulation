@@ -384,6 +384,8 @@ pub async fn run_emultaion(sp_id: &str, mut con: MultiplexedConnection) -> Resul
     let uq_goal = goal_string_to_sp_value(&goal, running::goal_runner::GoalPriority::Normal);
     let scheduled_goals = vec![uq_goal].to_spvalue();
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let new_state = state
                            .update("gantry_emulate_execution_time", 1.to_spvalue())

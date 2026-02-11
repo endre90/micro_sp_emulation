@@ -58,6 +58,8 @@ pub async fn run_emultaion(
     let uq_goal = goal_string_to_sp_value(&goal, running::goal_runner::GoalPriority::Normal);
     let scheduled_goals = vec![uq_goal].to_spvalue();
 
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
     if let Some(state) = StateManager::get_full_state(&mut con).await {
         let new_state = state
             .update(
@@ -163,8 +165,8 @@ async fn test_disabled() -> Result<(), Box<dyn Error>> {
                     BoolOrUnknown::Bool(true) => {
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                        let state = StateManager::get_full_state(&mut connection).await.unwrap();
-                        println!("DONE STATE: {}", state);
+                        // let state = StateManager::get_full_state(&mut connection).await.unwrap();
+                        // println!("DONE STATE: {}", state);
                         break;
                     }
                     BoolOrUnknown::Bool(false) => {
