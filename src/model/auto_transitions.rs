@@ -7,13 +7,16 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let operations = vec![];
 
     let counter = iv!(&&format!("counter"));
-    let state = state.add(assign!(counter, SPValue::Int64(IntOrUnknown::Int64(0))));
+    let state = state.add(
+        assign!(counter, SPValue::Int64(IntOrUnknown::Int64(0))),
+        "emulator",
+    );
 
     let lights_on = bv!(&&format!("lights_on"));
-    let state = state.add(assign!(
-        lights_on,
-        SPValue::Bool(BoolOrUnknown::Bool(false))
-    ));
+    let state = state.add(
+        assign!(lights_on, SPValue::Bool(BoolOrUnknown::Bool(false))),
+        "emulator",
+    );
 
     auto_transitions.push(Transition::parse(
         "turn_lights_on",
@@ -59,12 +62,13 @@ async fn test_auto_transitions() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = crate::model::state::state();
 
-    let runner_vars = generate_runner_state_variables(&sp_id);
+    let number_of_timers = 1;
+    let runner_vars = generate_runner_state_variables(&sp_id, number_of_timers, "emulator");
     let state = state.extend(runner_vars, true);
 
     let (model, state) = crate::model::auto_transitions::model(&sp_id, &state);
 
-    let op_vars = generate_operation_state_variables(&model, coverability_tracking);
+    let op_vars = generate_operation_state_variables(&model, coverability_tracking, "emulator");
     let state = state.extend(op_vars, true);
 
     let connection_manager = ConnectionManager::new().await;
@@ -93,7 +97,7 @@ async fn test_auto_transitions() -> Result<(), Box<dyn std::error::Error>> {
     let con_clone = con_arc.clone();
     let sp_id_clone = sp_id.clone();
     let sp_handle =
-        tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
+        tokio::task::spawn(async move { main_runner(&sp_id_clone, model, number_of_timers, &con_clone).await });
 
     // log::info!(target: &log_target, "Spawning test task.");
     // let con_clone = con_arc.clone();

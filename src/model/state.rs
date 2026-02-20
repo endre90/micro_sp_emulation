@@ -11,12 +11,12 @@ fn generate_basic_variables(name: &str, state: &State) -> State {
     let subsequent_fail_counter = iv!(&&format!("{}_subsequent_fail_counter", name));
     let ref_counter = iv!(&&format!("{}_ref_counter", name));
 
-    let state = state.add(assign!(resource_online, false.to_spvalue()));
-    let state = state.add(assign!(request_trigger, false.to_spvalue()));
-    let state = state.add(assign!(request_state, "initial".to_spvalue()));
-    let state = state.add(assign!(total_fail_counter, 0.to_spvalue()));
-    let state = state.add(assign!(subsequent_fail_counter, 0.to_spvalue()));
-    let state = state.add(assign!(ref_counter, 1.to_spvalue()));
+    let state = state.add(assign!(resource_online, false.to_spvalue()), "emulator");
+    let state = state.add(assign!(request_trigger, false.to_spvalue()), "emulator");
+    let state = state.add(assign!(request_state, "initial".to_spvalue()), "emulator");
+    let state = state.add(assign!(total_fail_counter, 0.to_spvalue()), "emulator");
+    let state = state.add(assign!(subsequent_fail_counter, 0.to_spvalue()), "emulator");
+    let state = state.add(assign!(ref_counter, 1.to_spvalue()), "emulator");
 
     state
 }
@@ -55,28 +55,37 @@ fn generate_emulation_variables(name: &str, state: &State) -> State {
     let emulate_failure_rate = iv!(&&format!("{}_emulate_failure_rate", name));
     let emulate_failure_cause = iv!(&&format!("{}_emulate_failure_cause", name));
 
-    let state = state.add(assign!(emulate_execution_time, 0.to_spvalue()));
-    let state = state.add(assign!(emulate_failure_rate, 0.to_spvalue()));
-    let state = state.add(assign!(emulate_failure_cause, 0.to_spvalue()));
+    let state = state.add(assign!(emulate_execution_time, 0.to_spvalue()), "emulator");
+    let state = state.add(assign!(emulate_failure_rate, 0.to_spvalue()), "emulator");
+    let state = state.add(assign!(emulate_failure_cause, 0.to_spvalue()), "emulator");
 
     let emulated_execution_time = iv!(&&format!("{}_emulated_execution_time", name));
     let emulated_failure_rate = iv!(&&format!("{}_emulated_failure_rate", name));
     let emulated_failure_cause = av!(&&format!("{}_emulated_failure_cause", name));
 
-    let state = state.add(assign!(emulated_execution_time, 0.to_spvalue()));
-    let state = state.add(assign!(emulated_failure_rate, 0.to_spvalue()));
-    let state = state.add(assign!(
-        emulated_failure_cause,
-        SPValue::Array(ArrayOrUnknown::Array(vec![]))
-    ));
+    let state = state.add(assign!(emulated_execution_time, 0.to_spvalue()), "emulator");
+    let state = state.add(assign!(emulated_failure_rate, 0.to_spvalue()), "emulator");
+    let state = state.add(
+        assign!(
+            emulated_failure_cause,
+            SPValue::Array(ArrayOrUnknown::Array(vec![]))
+        ),
+        "emulator",
+    );
 
     let emulate_mounted_tool = bv!(&&format!("{}_emulate_mounted_tool", name));
     let emulated_mounted_tool = v!(&&format!("{}_emulated_mounted_tool", name));
-    let state = state.add(assign!(emulate_mounted_tool, false.to_spvalue()));
-    let state = state.add(assign!(
-        emulated_mounted_tool,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
+    let state = state.add(
+        assign!(emulate_mounted_tool, false.to_spvalue()),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            emulated_mounted_tool,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
 
     state
 }
@@ -99,21 +108,33 @@ pub fn state() -> State {
     let gantry_light_indicator = bv!("gantry_light_indicator");
     let blinked = bv!("blinked");
 
-    let state = state.add(assign!(
-        gantry_command_command,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
-    let state = state.add(assign!(gantry_speed_command, 0.0.to_spvalue()));
-    let state = state.add(assign!(
-        gantry_position_command,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
-    let state = state.add(assign!(
-        gantry_light_indicator,
-        SPValue::Bool(BoolOrUnknown::UNKNOWN)
-    ));
+    let state = state.add(
+        assign!(
+            gantry_command_command,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
+    let state = state.add(assign!(gantry_speed_command, 0.0.to_spvalue()), "emulator");
+    let state = state.add(
+        assign!(
+            gantry_position_command,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            gantry_light_indicator,
+            SPValue::Bool(BoolOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
 
-    let state = state.add(assign!(blinked, SPValue::Bool(BoolOrUnknown::Bool(false))));
+    let state = state.add(
+        assign!(blinked, SPValue::Bool(BoolOrUnknown::Bool(false))),
+        "emulator",
+    );
 
     // We estimate (memory variables) the following, since we cannot directly measure
     let gantry_speed_measured = fv!("gantry_speed_estimated");
@@ -121,22 +142,34 @@ pub fn state() -> State {
     let gantry_calibrated_estimated = bv!("gantry_calibrated_estimated");
     let gantry_locked_estimated = bv!("gantry_locked_estimated");
 
-    let state = state.add(assign!(
-        gantry_calibrated_estimated,
-        SPValue::Bool(BoolOrUnknown::Bool(false))
-    ));
-    let state = state.add(assign!(
-        gantry_locked_estimated,
-        SPValue::Bool(BoolOrUnknown::Bool(false))
-    ));
-    let state = state.add(assign!(
-        gantry_speed_measured,
-        SPValue::Float64(FloatOrUnknown::UNKNOWN)
-    ));
-    let state = state.add(assign!(
-        gantry_position_estimated,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
+    let state = state.add(
+        assign!(
+            gantry_calibrated_estimated,
+            SPValue::Bool(BoolOrUnknown::Bool(false))
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            gantry_locked_estimated,
+            SPValue::Bool(BoolOrUnknown::Bool(false))
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            gantry_speed_measured,
+            SPValue::Float64(FloatOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            gantry_position_estimated,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
 
     // Optional: emulate gantry failure and execution time
     let state = generate_emulation_variables("gantry", &state);
@@ -154,15 +187,21 @@ pub fn state() -> State {
     let robot_speed_command = fv!("robot_speed_command");
     let robot_position_command = v!("robot_position_command");
 
-    let state = state.add(assign!(
-        robot_command_command,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
-    let state = state.add(assign!(robot_speed_command, 0.0.to_spvalue()));
-    let state = state.add(assign!(
-        robot_position_command,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
+    let state = state.add(
+        assign!(
+            robot_command_command,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
+    let state = state.add(assign!(robot_speed_command, 0.0.to_spvalue()), "emulator");
+    let state = state.add(
+        assign!(
+            robot_position_command,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
 
     // We estimate (memory variables) the following, since we cannot directly measure
     let robot_speed_measured = fv!("robot_speed_estimated");
@@ -172,51 +211,69 @@ pub fn state() -> State {
     let robot_mounted_one_time_measured = v!("robot_mounted_one_time_measured");
 
     let test_frame_1 = tfv!("test_frame_1");
-    let state = state.add(assign!(
-        test_frame_1,
-        SPValue::Transform(TransformOrUnknown::Transform(SPTransformStamped {
-            active_transform: true,
-            enable_transform: true,
-            time_stamp: SystemTime::now(),
-            parent_frame_id: "a".to_string(),
-            child_frame_id: "b".to_string(),
-            transform: SPTransform {
-                translation: SPTranslation {
-                    x: OrderedFloat::from(1.23),
-                    y: OrderedFloat::from(1.23),
-                    z: OrderedFloat::from(1.23),
+    let state = state.add(
+        assign!(
+            test_frame_1,
+            SPValue::Transform(TransformOrUnknown::Transform(SPTransformStamped {
+                active_transform: true,
+                enable_transform: true,
+                time_stamp: SystemTime::now(),
+                parent_frame_id: "a".to_string(),
+                child_frame_id: "b".to_string(),
+                transform: SPTransform {
+                    translation: SPTranslation {
+                        x: OrderedFloat::from(1.23),
+                        y: OrderedFloat::from(1.23),
+                        z: OrderedFloat::from(1.23),
+                    },
+                    rotation: SPRotation {
+                        x: OrderedFloat::from(1.23),
+                        y: OrderedFloat::from(1.23),
+                        z: OrderedFloat::from(1.23),
+                        w: OrderedFloat::from(1.23),
+                    }
                 },
-                rotation: SPRotation {
-                    x: OrderedFloat::from(1.23),
-                    y: OrderedFloat::from(1.23),
-                    z: OrderedFloat::from(1.23),
-                    w: OrderedFloat::from(1.23),
-                }
-            },
-            metadata: MapOrUnknown::UNKNOWN
-        }))
-    ));
-
-    let state = state.add(assign!(
-        robot_speed_measured,
-        SPValue::Float64(FloatOrUnknown::UNKNOWN)
-    ));
-    let state = state.add(assign!(
-        robot_position_estimated,
-        SPValue::String(StringOrUnknown::UNKNOWN))
+                metadata: MapOrUnknown::UNKNOWN
+            }))
+        ),
+        "emulator",
     );
-    let state = state.add(assign!(
-        robot_mounted_estimated,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
-    let state = state.add(assign!(
-        robot_mounted_checked,
-        SPValue::Bool(BoolOrUnknown::Bool(false))
-    ));
-    let state = state.add(assign!(
-        robot_mounted_one_time_measured,
-        SPValue::String(StringOrUnknown::UNKNOWN)
-    ));
+
+    let state = state.add(
+        assign!(
+            robot_speed_measured,
+            SPValue::Float64(FloatOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            robot_position_estimated,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            robot_mounted_estimated,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            robot_mounted_checked,
+            SPValue::Bool(BoolOrUnknown::Bool(false))
+        ),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(
+            robot_mounted_one_time_measured,
+            SPValue::String(StringOrUnknown::UNKNOWN)
+        ),
+        "emulator",
+    );
     // let state = state.add(assign!(asdf, SPValue::Bool(BoolOrUnknown::Bool(false))));
 
     // let robot_mode_measured = v!("robot_mode_measured"); // safety_stop, emergency_stop, operational

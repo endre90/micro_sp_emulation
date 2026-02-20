@@ -8,7 +8,10 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let mut auto_operations = vec![];
 
     let counter = iv!(&&format!("counter"));
-    let state = state.add(assign!(counter, SPValue::Int64(IntOrUnknown::Int64(0))));
+    let state = state.add(
+        assign!(counter, SPValue::Int64(IntOrUnknown::Int64(0))),
+        "emulator",
+    );
 
     for pos in vec!["a", "b"] {
         auto_operations.push(Operation::new(
@@ -94,12 +97,13 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
             crate::DONT_EMULATE_FAILURE.to_spvalue(),
         );
 
-    let runner_vars = generate_runner_state_variables(&sp_id);
+    let number_of_timers = 1;
+    let runner_vars = generate_runner_state_variables(&sp_id, number_of_timers, "emulator");
     let state = state.extend(runner_vars, true);
 
     let (model, state) = crate::model::auto_operations::model(&sp_id, &state);
 
-    let op_vars = generate_operation_state_variables(&model, coverability_tracking);
+    let op_vars = generate_operation_state_variables(&model, coverability_tracking, "emulator");
     let state = state.extend(op_vars, true);
 
     let connection_manager = ConnectionManager::new().await;
@@ -127,8 +131,9 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
     log::info!(target: &log_target, "Spawning Micro SP.");
     let con_clone = con_arc.clone();
     let sp_id_clone = sp_id.clone();
-    let sp_handle =
-        tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
+    let sp_handle = tokio::task::spawn(async move {
+        main_runner(&sp_id_clone, model, number_of_timers, &con_clone).await
+    });
 
     log::info!(target: &log_target, "Test started. Polling for condition...");
 
@@ -139,7 +144,6 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
             match StateManager::get_full_state(&mut connection).await {
                 Some(state) => match state.get_int_or_unknown(&format!("counter"), &log_target) {
                     IntOrUnknown::Int64(5) => {
-                        
                         // Wait before aborting the handles so that the operation can cycle through all states
                         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                         // let state = StateManager::get_full_state(&mut connection).await.unwrap();

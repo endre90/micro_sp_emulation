@@ -11,7 +11,10 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let mut operations = vec![];
 
     let failed = bv!(&&format!("failed"));
-    let state = state.add(assign!(failed, SPValue::Bool(BoolOrUnknown::Bool(false))));
+    let state = state.add(
+        assign!(failed, SPValue::Bool(BoolOrUnknown::Bool(false))),
+        "emulator",
+    );
 
     operations.push(Operation::new(
         "gantry_unlock",
@@ -127,12 +130,13 @@ async fn test_failed_fatal() -> Result<(), Box<dyn Error>> {
 
     let state = crate::model::state::state();
 
-    let runner_vars = generate_runner_state_variables(&sp_id);
+    let number_of_timers = 1;
+    let runner_vars = generate_runner_state_variables(&sp_id, number_of_timers, "emulator");
     let state = state.extend(runner_vars, true);
 
     let (model, state) = crate::model::failed_fatal::model(&sp_id, &state);
 
-    let op_vars = generate_operation_state_variables(&model, coverability_tracking);
+    let op_vars = generate_operation_state_variables(&model, coverability_tracking, "emulator");
     let state = state.extend(op_vars, true);
 
     let connection_manager = ConnectionManager::new().await;
@@ -158,8 +162,9 @@ async fn test_failed_fatal() -> Result<(), Box<dyn Error>> {
     log::info!(target: &log_target, "Spawning Micro SP.");
     let con_clone = con_arc.clone();
     let sp_id_clone = sp_id.clone();
-    let sp_handle =
-        tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
+    let sp_handle = tokio::task::spawn(async move {
+        main_runner(&sp_id_clone, model, number_of_timers, &con_clone).await
+    });
 
     log::info!(target: &log_target, "Spawning test task.");
     let con_clone = con_arc.clone();

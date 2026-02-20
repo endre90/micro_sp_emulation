@@ -12,7 +12,10 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
     let mut auto_operations = vec![];
 
     let done = bv!(&&format!("done"));
-    let state = state.add(assign!(done, SPValue::Bool(BoolOrUnknown::Bool(false))));
+    let state = state.add(
+        assign!(done, SPValue::Bool(BoolOrUnknown::Bool(false))),
+        "emulator",
+    );
 
     let auto_opertion_move_ababa = sop_operation_move_robot_and_gantry(sp_id, &state);
     auto_operations.push(auto_opertion_move_ababa);
@@ -211,13 +214,13 @@ async fn test_sop_paralell() -> Result<(), Box<dyn Error>> {
     let coverability_tracking = false;
 
     let state = crate::model::state::state();
-
-    let runner_vars = generate_runner_state_variables(&sp_id);
+    let number_of_timers = 1;
+    let runner_vars = generate_runner_state_variables(&sp_id, number_of_timers, "emulator");
     let state = state.extend(runner_vars, true);
 
     let (model, state) = crate::model::sop_parallel::model(&sp_id, &state);
 
-    let op_vars = generate_operation_state_variables(&model, coverability_tracking);
+    let op_vars = generate_operation_state_variables(&model, coverability_tracking, "emulator");
     let state = state.extend(op_vars, true);
 
     let connection_manager = ConnectionManager::new().await;
@@ -245,7 +248,7 @@ async fn test_sop_paralell() -> Result<(), Box<dyn Error>> {
     let sp_id_clone = sp_id.clone();
     let sp_handle = tokio::task::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-        main_runner(&sp_id_clone, model, &con_clone).await
+        main_runner(&sp_id_clone, model, number_of_timers, &con_clone).await
     });
 
     log::info!(target: &log_target, "Spawning test task.");

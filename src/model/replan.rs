@@ -432,13 +432,14 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
     let coverability_tracking = false;
 
     let state = crate::model::state::state();
+    let number_of_timers = 1;
 
-    let runner_vars = generate_runner_state_variables(&sp_id);
+    let runner_vars = generate_runner_state_variables(&sp_id, number_of_timers, "emulator");
     let state = state.extend(runner_vars, true);
 
     let (model, state) = crate::model::replan::model(&sp_id, &state);
 
-    let op_vars = generate_operation_state_variables(&model, coverability_tracking);
+    let op_vars = generate_operation_state_variables(&model, coverability_tracking, "emulator");
     let state = state.extend(op_vars, true);
 
     let connection_manager = ConnectionManager::new().await;
@@ -465,7 +466,7 @@ async fn test_replan() -> Result<(), Box<dyn Error>> {
     let con_clone = con_arc.clone();
     let sp_id_clone = sp_id.clone();
     let sp_handle =
-        tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
+        tokio::task::spawn(async move { main_runner(&sp_id_clone, model, number_of_timers, &con_clone).await });
 
     log::info!(target: &log_target, "Spawning test task.");
     let con_clone = con_arc.clone();

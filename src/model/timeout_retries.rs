@@ -10,8 +10,14 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
 
     let timeout = bv!(&&format!("timeout"));
     let x = bv!(&&format!("x"));
-    let state = state.add(assign!(timeout, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
-    let state = state.add(assign!(x, SPValue::Bool(BoolOrUnknown::UNKNOWN)));
+    let state = state.add(
+        assign!(timeout, SPValue::Bool(BoolOrUnknown::UNKNOWN)),
+        "emulator",
+    );
+    let state = state.add(
+        assign!(x, SPValue::Bool(BoolOrUnknown::UNKNOWN)),
+        "emulator",
+    );
 
     operations.push(Operation::new(
         &format!("emulate_timeout_retries"),
@@ -22,13 +28,13 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         false,
         Vec::from([Transition::parse(
             &format!("start_sleep"),
-            "var:micro_sp_time_request_state == initial \
-            && var:micro_sp_time_request_trigger == false",
+            "var:micro_sp_timer_1_request_state == initial \
+            && var:micro_sp_timer_1_request_trigger == false",
             "true",
             vec![
-                &format!("var:micro_sp_time_request_trigger <- true"),
-                &format!("var:micro_sp_time_duration_ms <- 3000"),
-                &format!("var:micro_sp_time_command <- sleep"),
+                &format!("var:micro_sp_timer_1_request_trigger <- true"),
+                &format!("var:micro_sp_timer_1_duration_ms <- 3000"),
+                &format!("var:micro_sp_timer_1_command <- sleep"),
             ],
             Vec::<&str>::new(),
             &state,
@@ -36,10 +42,10 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
         Vec::from([Transition::parse(
             &format!("complete_sleep"),
             "true",
-            &format!("var:micro_sp_time_request_state == succeeded"),
+            &format!("var:micro_sp_timer_1_request_state == succeeded"),
             vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
+                "var:micro_sp_timer_1_request_trigger <- false",
+                "var:micro_sp_timer_1_request_state <- initial",
                 "var:timeout <- false",
             ],
             Vec::<&str>::new(),
@@ -51,8 +57,8 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             "true",
             "true",
             vec![
-                "var:micro_sp_time_request_trigger <- false",
-                "var:micro_sp_time_request_state <- initial",
+                "var:micro_sp_timer_1_request_trigger <- false",
+                "var:micro_sp_timer_1_request_state <- initial",
                 "var:timeout <- true",
             ],
             Vec::<&str>::new(),
@@ -109,13 +115,14 @@ async fn test_timeout_rerties() -> Result<(), Box<dyn Error>> {
     let coverability_tracking = false;
 
     let state = crate::model::state::state();
+    let number_of_timers = 1;
 
-    let runner_vars = generate_runner_state_variables(&sp_id);
+    let runner_vars = generate_runner_state_variables(&sp_id, number_of_timers, "emulator");
     let state = state.extend(runner_vars, true);
 
     let (model, state) = crate::model::timeout_retries::model(&sp_id, &state);
 
-    let op_vars = generate_operation_state_variables(&model, coverability_tracking);
+    let op_vars = generate_operation_state_variables(&model, coverability_tracking, "emulator");
     let state = state.extend(op_vars, true);
 
     let connection_manager = ConnectionManager::new().await;
@@ -141,8 +148,11 @@ async fn test_timeout_rerties() -> Result<(), Box<dyn Error>> {
     log::info!(target: &log_target, "Spawning Micro SP.");
     let con_clone = con_arc.clone();
     let sp_id_clone = sp_id.clone();
-    let sp_handle =
-        tokio::task::spawn(async move { main_runner(&sp_id_clone, model, &con_clone).await });
+    let sp_handle = tokio::task::spawn(async move {
+        main_runner(&sp_id_clone, model, number_of_timers, &con_clone).await
+    });
+
+    // tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     log::info!(target: &log_target, "Spawning test task.");
     let con_clone = con_arc.clone();
