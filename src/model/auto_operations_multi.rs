@@ -23,13 +23,18 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             true,
             Vec::from([Transition::parse(
                 &format!("start_sleep_{}", timer_id.0),
-                &format!("var:counter < 9 \
-                    && var:micro_sp_timer_{}_request_state == initial \
-                    && var:micro_sp_timer_{}_request_trigger == false", timer_id.0, timer_id.0),
+                &format!(
+                    "var:counter < 3 && var:micro_sp_timer_{}_request_state == initial \
+                    && var:micro_sp_timer_{}_request_trigger == false",
+                    timer_id.0, timer_id.0
+                ),
                 "true",
                 vec![
                     &format!("var:micro_sp_timer_{}_request_trigger <- true", timer_id.0),
-                    &format!("var:micro_sp_timer_{}_duration_ms <- {}", timer_id.0, timer_id.1),
+                    &format!(
+                        "var:micro_sp_timer_{}_duration_ms <- {}",
+                        timer_id.0, timer_id.1
+                    ),
                     &format!("var:micro_sp_timer_{}_command <- sleep", timer_id.0),
                 ],
                 Vec::<&str>::new(),
@@ -38,7 +43,10 @@ pub fn model(sp_id: &str, state: &State) -> (Model, State) {
             Vec::from([Transition::parse(
                 &format!("complete_sleep_{}", timer_id.0),
                 "true",
-                &format!("var:micro_sp_timer_{}_request_state == succeeded", timer_id.0),
+                &format!(
+                    "var:micro_sp_timer_{}_request_state == succeeded",
+                    timer_id.0
+                ),
                 vec![
                     &format!("var:micro_sp_timer_{}_request_trigger <- false", timer_id.0),
                     &format!("var:micro_sp_timer_{}_request_state <- initial", timer_id.0),
@@ -101,7 +109,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
     let op_vars = generate_operation_state_variables(&model, coverability_tracking, "emulator");
     let state = state.extend(op_vars, true);
 
-    println!("{}", state);
+    // println!("{}", state);
 
     let connection_manager = ConnectionManager::new().await;
     StateManager::set_state(&mut connection_manager.get_connection().await, &state).await;
@@ -134,18 +142,20 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!(target: &log_target, "Test started. Polling for condition...");
 
-    let max_wait = std::time::Duration::from_secs(30);
+    let max_wait = std::time::Duration::from_secs(15);
     let polling_logic = async {
         loop {
             let mut connection = con_arc.get_connection().await;
             match StateManager::get_full_state(&mut connection).await {
                 Some(state) => match state.get_int_or_unknown(&format!("counter"), &log_target) {
-                    IntOrUnknown::Int64(3) => {
-                        // Wait before aborting the handles so that the operation can cycle through all states
-                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                        // let state = StateManager::get_full_state(&mut connection).await.unwrap();
-                        // println!("DONE STATE: {}", state);
-                        break;
+                    IntOrUnknown::Int64(x) => {
+                        if x > 3 {
+                            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                            // let state =
+                            //     StateManager::get_full_state(&mut connection).await.unwrap();
+                            // println!("DONE STATE SUCC: {}", state);
+                            break;
+                        }
                     }
                     _ => (),
                 },
@@ -193,7 +203,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
 
                     let expected_patterns = vec![
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -4: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| Done -4: op_emulate_au\.\.\.r_1_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -201,7 +211,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -3: op_robot_move_to_b_[\w]+\s*\|$",
+                        r"^\| Done -3: op_emulate_au\.\.\.r_2_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -209,7 +219,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -2: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| Done -2: op_emulate_au\.\.\.r_3_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -217,7 +227,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Done -1: op_robot_move_to_b_[\w]+\s*\|$",
+                        r"^\| Done -1: op_emulate_au\.\.\.r_1_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
@@ -225,7 +235,7 @@ async fn test_auto_operations() -> Result<(), Box<dyn std::error::Error>> {
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Completed\s+\] Completed\s*\|$",
                         r"^\+--------------------------------------------\+$",
                         r"^\+--------------------------------------------\+$",
-                        r"^\| Latest: op_robot_move_to_a_[\w]+\s*\|$",
+                        r"^\| Latest: op_emulate_au\.\.\.r_2_[\w]+\s*\|$",
                         r"^\| -+\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Initial\s+\] Starting\s*\|$",
                         r"^\| \[\d{2}:\d{2}:\d{2}\.\d{3} \| Executing\s+\] Executing\s*\|$",
